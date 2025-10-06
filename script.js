@@ -4,30 +4,23 @@ import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, on
 import { getFirestore, doc, setDoc, getDoc, updateDoc, increment, arrayUnion, query, collection, where, getDocs, runTransaction } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-firestore.js";
 
 // ======================================================
-// ** D0. بيانات دخول المطور - يتم تحميلها من info.json **
+// ** D0. بيانات المطور والتهيئة — تُحمّل من info.json **
 // ======================================================
-let DEV_EMAIL = null; // سيتم تحميل القيمة من info.json
-let DEV_PASSWORD = null; // سيتم تحميل القيمة من info.json
-const DEV_TOKEN_KEY = "DEV_ACCESS_TOKEN"; // مفتاح لتخزين حالة الدخول
-const DEV_TOKEN_VALUE = "1c32d5e7-a9f0-4b2c-8d1e-5f4b9c8a7d6e"; // قيمة رمز سري
+// سيتم تعيينهم عند تحميل info.json
+let DEV_EMAIL = null;
+let DEV_PASSWORD = null;
+let DEV_TOKEN_KEY = null;    // سيُقرأ من info.json
+let DEV_TOKEN_VALUE = null;  // سيُقرأ من info.json
 
-// B. بيانات التهيئة (يجب تغييرها ببيانات مشروعك الحقيقية)
-const firebaseConfig = {
-    apiKey: CONFIG.FIREBASE_API_KEY,
-    authDomain: CONFIG.AUTH_DOMAIN,
-    projectId: CONFIG.PROJECT_ID,
-    storageBucket: CONFIG.STORAGE_BUCKET,
-    messagingSenderId: CONFIG.MESSAGING_SENDER_ID,
-    appId: CONFIG.APP_ID,
-    measurementId: CONFIG.MEASUREMENT_ID
-};
+// المتغير الخاص بتكوين Firebase سيُقرأ من info.json
+let firebaseConfig = null;
 
-// C. تهيئة التطبيق والخدمات
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+// تهيئة التطبيق وخدماته سيتم تنفيذها بعد تحميل config
+let app = null;
+let auth = null;
+let db = null;
 
-// دالة تحميل بيانات المطور و Firebase Config من ملف info.json (أو ملف خارجي آخر)
+// دالة تحميل بيانات المطور و Firebase Config من ملف info.json
 async function loadConfig() {
     try {
         const response = await fetch('info.json');
@@ -38,11 +31,20 @@ async function loadConfig() {
         const config = await response.json();
 
         // تحديث بيانات المطور
-        DEV_EMAIL = config.DEV_EMAIL;
-        DEV_PASSWORD = config.DEV_PASSWORD;
+        DEV_EMAIL = config.DEV_EMAIL ?? null;
+        DEV_PASSWORD = config.DEV_PASSWORD ?? null;
 
-        // يمكنك هنا أيضاً تحديث firebaseConfig إذا كان ملف info.json يحتوي عليها
-        // مثلاً: firebaseConfig.apiKey = config.FIREBASE_API_KEY;
+        // تحميل مفاتيح الجلسة الإدارية إن وجدت
+        DEV_TOKEN_KEY = config.DEV_TOKEN_KEY ?? "DEV_ACCESS_TOKEN";
+        DEV_TOKEN_VALUE = config.DEV_TOKEN_VALUE ?? "DEV_TOKEN_VALUE_PLACEHOLDER";
+
+        // تحميل firebaseConfig إذا وُجد
+        if (config.firebaseConfig) {
+            firebaseConfig = config.firebaseConfig;
+        } else {
+            console.error("No firebaseConfig found in info.json");
+            return false;
+        }
 
         console.log("Configuration loaded successfully from info.json.");
         return true;
