@@ -1,0 +1,20 @@
+# تجاهل الملفات الحساسة
+info.json
+
+# ملفات بيئة التطوير
+.env
+*.env
+
+# مجلدات النظام
+node_modules/
+dist/
+build/
+.cache/
+.vscode/
+
+# ملفات مؤقتة
+*.log
+*.tmp
+*.bak
+.DS_Store
+Thumbs.db
