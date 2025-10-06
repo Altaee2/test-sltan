@@ -29,7 +29,7 @@ async function loadConfig() {
         }
         const config = await response.json();
 
-        // ** تم حذف قراءة DEV_EMAIL و DEV_PASSWORD من info.json **
+        // ** يتم تجاهل DEV_EMAIL و DEV_PASSWORD في الكود الجديد، لكن يتم قراءة التوكن والـ config **
 
         // تحميل مفاتيح الجلسة الإدارية إن وجدت
         DEV_TOKEN_KEY = config.DEV_TOKEN_KEY ?? "DEV_ACCESS_TOKEN";
@@ -217,6 +217,7 @@ async function handleLogin(e) {
 
             // منع دخول حسابات isAdmin: true عادية (بالرغم من أن حالة المطور قد تم فحصها بالفعل)
             if (userData.isAdmin) {
+                // قد تكون هذه حالة قديمة، لذا نكتفي بالتحقق من الـ UID أعلاه
                 await signOut(auth);
                 displayMessage('❌ هذا الحساب هو حساب إداري. يرجى تسجيل الدخول من صفحة المطورين.', 'error');
                 return;
@@ -252,15 +253,6 @@ function handleLogout() {
 // ======================================================
 // 3. منطق لوحة تحكم المطور (Admin Panel Logic)
 // ======================================================
-
-// ** تم إزالة منطق تسجيل الدخول ببريد وكلمة مرور للمطور المنفصل **
-// الآن يعتمد فقط على الـ UID في دالة handleLogin
-
-function handleAdminLogin(e) {
-    e.preventDefault();
-    displayMessage('❌ يجب تسجيل دخول المطور من صفحة الدخول العادية باستخدام بريده الإلكتروني وكلمة المرور.', 'error');
-}
-
 
 // دالة التحقق من الرمز السري للمطور (تبقى للتحقق من الجلسة بعد الدخول)
 function isAuthenticatedAdmin() {
@@ -456,16 +448,17 @@ async function applyReferralBonus(newUserId, referrerEmailOrUID) {
 
 // الحصول على القيمة الحالية للعداد اليومي بناءً على البوستات
 function getDailyIncrementAmount(userData) {
-    let incrementAmount = COUNTER_INCREMENT;
+    let incrementAmount = DAILY_GIFT_AMOUNT; // يجب البدء بقيمة الهدية اليومية الأساسية
     if (userData.boosts && userData.boosts.length > 0) {
         userData.boosts.forEach(boostId => {
             const boost = BOOST_ITEMS.find(item => item.id === boostId);
             if (boost) {
+                // يتم إضافة قيمة الزيادة اليومية للبوست إلى المبلغ الأساسي
                 incrementAmount += boost.dailyIncrement;
             }
         });
     }
-    // يجب أن تكون القيمة الإجمالية لا تقل عن 1 لمنع المشاكل إذا كان COUNTER_INCREMENT صفراً
+    // يجب أن تكون القيمة الإجمالية لا تقل عن 1 لمنع المشاكل
     return Math.max(incrementAmount, 1);
 }
 
@@ -487,7 +480,10 @@ async function claimDailyPoints(user) {
 
             const userData = userDoc.data();
             const now = Date.now();
-            const lastClaimTime = userData.last_daily_claim.toMillis();
+            
+            // تحويل Firestore Timestamp إلى وقت بالمللي ثانية
+            const lastClaimTime = userData.last_daily_claim ? userData.last_daily_claim.toMillis() : new Date(0).getTime();
+            
             const timeSinceLastClaim = now - lastClaimTime;
 
             if (timeSinceLastClaim < COOLDOWN_TIME_MS) {
@@ -498,8 +494,7 @@ async function claimDailyPoints(user) {
                 return;
             }
 
-            const dailyIncrement = getDailyIncrementAmount(userData); // الحصول على قيمة الزيادة من البوستات
-            const totalPointsToAdd = dailyIncrement; // القيمة النهائية
+            const totalPointsToAdd = getDailyIncrementAmount(userData); // الحصول على قيمة الزيادة من البوستات
 
             // تحديث النقاط وآخر وقت للمطالبة
             transaction.update(userRef, {
@@ -530,10 +525,14 @@ function renderDashboard(userData) {
     // حساب العداد اليومي بناءً على البوستات
     const currentDailyIncrement = getDailyIncrementAmount(userData);
     document.getElementById('daily-increment-amount').textContent = currentDailyIncrement.toLocaleString();
+    document.getElementById('transfer-fee').textContent = TRANSFER_FEE.toLocaleString(); // عرض العمولة
 
     // حالة زر المطالبة اليومية
     const claimButton = document.getElementById('claim-daily-btn');
-    const lastClaim = userData.last_daily_claim.toMillis();
+    
+    // تأكد من أن last_daily_claim موجودة وقابلة للتحويل
+    const lastClaim = userData.last_daily_claim ? userData.last_daily_claim.toMillis() : new Date(0).getTime();
+    
     const timeSinceLastClaim = Date.now() - lastClaim;
 
     if (claimButton) {
@@ -559,7 +558,10 @@ async function loadDashboardData(user, forceReload = false) {
 
     // استخدام onSnapshot للاستماع للتغييرات في الوقت الفعلي
     if (!forceReload) {
-        onSnapshot(userRef, (docSnap) => {
+        // التأكد من أننا نستخدم onSnapshot مرة واحدة فقط
+        if (window.dashboardListener) return;
+
+        window.dashboardListener = onSnapshot(userRef, (docSnap) => {
             if (docSnap.exists()) {
                 const userData = docSnap.data();
                 if (userData.is_banned) {
@@ -595,10 +597,16 @@ function copyReferralCode() {
     referralLink.select();
     referralLink.setSelectionRange(0, 99999); // for mobile devices
     try {
-        document.execCommand('copy');
+        // استخدام navigator.clipboard.writeText أفضل، لكن execCommand أضمن في بعض البيئات
+        document.execCommand('copy'); 
         displayMessage('✅ تم نسخ كود الإحالة بنجاح!', 'success');
     } catch (err) {
-        displayMessage('❌ فشل في نسخ الكود.', 'error');
+        // Fallback for better compatibility
+        navigator.clipboard.writeText(referralLink.value).then(() => {
+            displayMessage('✅ تم نسخ كود الإحالة بنجاح (باستخدام Clipboard API)!', 'success');
+        }).catch(() => {
+            displayMessage('❌ فشل في نسخ الكود.', 'error');
+        });
     }
 }
 
@@ -624,9 +632,14 @@ async function executePointTransfer(senderUid, recipientUid, amount) {
             }
 
             const senderData = senderDoc.data();
+            const recipientData = recipientDoc.data();
 
             if (senderData.points < totalCost) {
                 throw "Insufficient balance to cover the amount and the fee.";
+            }
+            
+            if (recipientData.is_banned) {
+                throw "Recipient is banned.";
             }
 
             // 1. خصم المبلغ الكلي (المبلغ + العمولة) من المرسل
@@ -639,8 +652,6 @@ async function executePointTransfer(senderUid, recipientUid, amount) {
                 points: increment(amount)
             });
 
-            // يمكن إضافة عملية تسجيل للعمولة هنا إذا لزم الأمر
-
         });
         displayMessage(`✅ تم تحويل ${amount.toLocaleString()} نقطة بنجاح. العمولة: ${TRANSFER_FEE.toLocaleString()} نقطة.`, 'success');
         return true;
@@ -649,7 +660,9 @@ async function executePointTransfer(senderUid, recipientUid, amount) {
 
         if (error === "Insufficient balance to cover the amount and the fee.") {
             displayMessage('❌ الرصيد غير كافٍ لتغطية المبلغ والعمولة المطلوبة.', 'error');
-        } else if (error.includes("Recipient")) {
+        } else if (error === "Recipient is banned.") {
+             displayMessage('❌ فشل التحويل: لا يمكن التحويل إلى مستخدم محظور.', 'error');
+        } else if (typeof error === 'string' && error.includes("Recipient")) {
             displayMessage('❌ فشل التحويل: لم يتم العثور على المستخدم المستلم.', 'error');
         } else {
             displayMessage('❌ فشل التحويل. يرجى المحاولة لاحقاً.', 'error');
@@ -664,49 +677,59 @@ async function loadBoostsPageData(user) {
     if (!boostsList) return;
 
     try {
-        const docSnap = await getDoc(doc(db, "users", user.uid));
-        if (!docSnap.exists()) return;
-        const userData = docSnap.data();
-        const currentPoints = userData.points || 0;
-        const userBoosts = userData.boosts || [];
+        // استخدام onSnapshot للحصول على تحديثات فورية للنقاط والبوستات
+        onSnapshot(doc(db, "users", user.uid), (docSnap) => {
+            if (!docSnap.exists()) return;
+            const userData = docSnap.data();
+            const currentPoints = userData.points || 0;
+            const userBoosts = userData.boosts || [];
 
-        boostsList.innerHTML = '';
+            boostsList.innerHTML = '';
 
-        BOOST_ITEMS.forEach(boost => {
-            const isOwned = userBoosts.includes(boost.id);
-            const canAfford = currentPoints >= boost.price;
-            const buttonText = isOwned ? 'مُشتراة' : (canAfford ? 'شراء' : 'نقاط غير كافية');
+            BOOST_ITEMS.forEach(boost => {
+                const isOwned = userBoosts.includes(boost.id);
+                const canAfford = currentPoints >= boost.price;
+                const buttonText = isOwned ? 'مُشتراة' : (canAfford ? 'شراء' : 'نقاط غير كافية');
 
-            const listItem = document.createElement('li');
-            listItem.className = 'bg-white p-4 rounded-lg shadow-md flex justify-between items-center mb-4';
-            listItem.innerHTML = `
-                <div>
-                    <h3 class="font-bold text-lg text-gray-800">${boost.name}</h3>
-                    <p class="text-sm text-gray-600">زيادة يومية: ${boost.dailyIncrement} نقطة</p>
-                    <p class="text-blue-600 font-semibold mt-1">السعر: ${boost.price.toLocaleString()} نقطة</p>
-                </div>
-                <button
-                    data-boost-id="${boost.id}"
-                    data-price="${boost.price}"
-                    class="buy-boost-btn px-4 py-2 text-white text-sm rounded-lg transition duration-200
-                    ${isOwned ? 'bg-gray-400 cursor-not-allowed' : (canAfford ? 'bg-green-500 hover:bg-green-600' : 'bg-red-400 cursor-not-allowed')}"
-                    ${isOwned || !canAfford ? 'disabled' : ''}
-                >
-                    ${buttonText}
-                </button>
-            `;
-            boostsList.appendChild(listItem);
-        });
+                const listItem = document.createElement('li');
+                listItem.className = 'bg-white p-4 rounded-lg shadow-md flex justify-between items-center mb-4';
+                listItem.innerHTML = `
+                    <div>
+                        <h3 class="font-bold text-lg text-gray-800">${boost.name}</h3>
+                        <p class="text-sm text-gray-600">زيادة يومية: ${boost.dailyIncrement} نقطة</p>
+                        <p class="text-blue-600 font-semibold mt-1">السعر: ${boost.price.toLocaleString()} نقطة</p>
+                    </div>
+                    <button
+                        data-boost-id="${boost.id}"
+                        data-price="${boost.price}"
+                        class="buy-boost-btn px-4 py-2 text-white text-sm rounded-lg transition duration-200
+                        ${isOwned ? 'bg-gray-400 cursor-not-allowed' : (canAfford ? 'bg-green-500 hover:bg-green-600' : 'bg-red-400 cursor-not-allowed')}"
+                        ${isOwned || !canAfford ? 'disabled' : ''}
+                    >
+                        ${buttonText}
+                    </button>
+                `;
+                boostsList.appendChild(listItem);
+            });
 
-        document.getElementById('current-points-boosts').textContent = currentPoints.toLocaleString();
+            document.getElementById('current-points-boosts').textContent = currentPoints.toLocaleString();
 
-        // ربط أحداث الشراء
-        document.querySelectorAll('.buy-boost-btn').forEach(button => {
-            button.addEventListener('click', handleBoostPurchase);
+            // ربط أحداث الشراء
+            document.querySelectorAll('.buy-boost-btn').forEach(button => {
+                // منع ربط الحدث أكثر من مرة
+                if (!button.dataset.listenerAttached) {
+                    button.addEventListener('click', handleBoostPurchase);
+                    button.dataset.listenerAttached = 'true';
+                }
+            });
+
+        }, (error) => {
+            console.error("Error listening to boosts data:", error);
+            displayMessage('❌ خطأ في تحميل قائمة العدادات.', 'error');
         });
 
     } catch (error) {
-        console.error("Error loading boosts data:", error);
+        console.error("Error loading boosts data setup:", error);
         displayMessage('❌ خطأ في تحميل قائمة العدادات.', 'error');
     }
 }
@@ -756,7 +779,7 @@ async function handleBoostPurchase(e) {
         });
 
         displayMessage('✅ تم شراء العداد بنجاح!', 'success');
-        loadBoostsPageData(user); // إعادة تحميل البيانات لتحديث الواجهة
+        // لا حاجة لـ loadBoostsPageData(user) هنا لأن onSnapshot سيتولى التحديث
 
     } catch (error) {
         console.error("Boost purchase error:", error);
@@ -827,8 +850,6 @@ document.addEventListener('DOMContentLoaded', async() => {
     const loginForm = document.getElementById('loginForm');
     if (loginForm) loginForm.addEventListener('submit', handleLogin);
 
-    // ** تم حذف ربط نموذج دخول المطور (adminLoginForm) **
-
     // ربط زر تسجيل الخروج (يجب أن يكون موجوداً في كل الصفحات الداخلية)
     const logoutBtn = document.getElementById('logout-btn');
     if (logoutBtn) logoutBtn.addEventListener('click', handleLogout);
@@ -863,13 +884,16 @@ document.addEventListener('DOMContentLoaded', async() => {
                     redirectTo('dashboard.html');
                 } else if (path.endsWith('dashboard.html')) {
                     loadDashboardData(user);
+                    
                     // ربط زر المطالبة اليومية
                     const claimButton = document.getElementById('claim-daily-btn');
                     if (claimButton) claimButton.addEventListener('click', () => claimDailyPoints(user));
+                    
                     // ربط زر النسخ
                     const copyBtn = document.getElementById('copy-referral-btn');
                     if (copyBtn) copyBtn.addEventListener('click', copyReferralCode);
-                    // ربط زر فتح modal التحويل
+                    
+                    // منطق Modal التحويل
                     const openTransferModalBtn = document.getElementById('open-transfer-modal');
                     const transferModal = document.getElementById('transfer-modal');
                     const closeTransferModalBtn = document.getElementById('close-transfer-modal');
@@ -903,6 +927,7 @@ document.addEventListener('DOMContentLoaded', async() => {
                     }
 
                     if (transferForm) {
+                        // ** 🛑🛑🛑 هذا هو الجزء الذي تم إصلاحه لضمان تمرير UID المستلم 🛑🛑🛑 **
                         transferForm.addEventListener('submit', async(e) => {
                             e.preventDefault();
 
@@ -919,17 +944,17 @@ document.addEventListener('DOMContentLoaded', async() => {
                                 return;
                             }
 
-                            // البحث عن المستلم للتأكد من وجوده والحصول على UID إذا أُدخل بريد إلكتروني
-                            let recipientUid = recipientId;
+                            let finalRecipientUid = recipientId; // الافتراض الأولي هو أن المُدخل هو UID
+
+                            // إذا كان المُدخل بريداً إلكترونياً، ابحث عن UID
                             if (recipientId.includes('@')) {
-                                // إذا كان المُدخل بريد إلكتروني، ابحث عن UID
                                 const q = query(collection(db, "users"), where("email", "==", recipientId));
                                 const snapshot = await getDocs(q);
                                 if (snapshot.empty) {
                                     displayMessage('❌ لم يتم العثور على مستخدم بالبريد الإلكتروني المُدخل.', 'error');
                                     return;
                                 }
-                                recipientUid = snapshot.docs[0].id;
+                                finalRecipientUid = snapshot.docs[0].id; // حفظ الـ UID الفعلي
                             } else {
                                 // إذا كان المُدخل UID، تأكد من وجود المستخدم
                                 const docSnap = await getDoc(doc(db, "users", recipientId));
@@ -941,8 +966,8 @@ document.addEventListener('DOMContentLoaded', async() => {
 
                             const senderUid = auth.currentUser.uid;
 
-                            // يجب أن يكون الرصيد كافياً للمبلغ + العمولة (يتم التحقق داخل executePointTransfer)
-                            const success = await executePointTransfer(senderUid, recipientUid, transferAmount);
+                            // ** تمرير الـ UID الفعلي المُستخلص (finalRecipientUid) **
+                            const success = await executePointTransfer(senderUid, finalRecipientUid, transferAmount);
 
                             if (success) {
                                 transferModal.classList.add('hidden');
@@ -952,6 +977,7 @@ document.addEventListener('DOMContentLoaded', async() => {
                                 loadDashboardData(auth.currentUser, true);
                             }
                         });
+                        // ** 🛑🛑🛑 نهاية الجزء الذي تم إصلاحه 🛑🛑🛑 **
                     }
 
 
