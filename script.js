@@ -1131,7 +1131,20 @@ function setupTermsModal() {
 
 document.addEventListener('DOMContentLoaded', async() => {
     // تحميل التهيئة من info.json أولاً
-    await loadConfig();
+    const ok = await loadConfig();
+    if (!ok) {
+        console.error("Failed to load config. Aborting initialization.");
+        // نستمر لكن بدون firebase لن تعمل وظائف المصادقة/قاعدة البيانات
+    }
+
+    // تهيئة Firebase الآن بعد تحميل firebaseConfig
+    if (firebaseConfig) {
+        app = initializeApp(firebaseConfig);
+        auth = getAuth(app);
+        db = getFirestore(app);
+    } else {
+        console.error("firebaseConfig is missing; Firebase not initialized.");
+    }
 
     // ربط نماذج التسجيل والدخول العادية
     const registerForm = document.getElementById('registerForm');
