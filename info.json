@@ -1,11 +1,15 @@
 {
-    "DEV_EMAIL": "Hasankanemero2005@gmail.com",
-    "DEV_PASSWORD": "admin12345",
-    "FIREBASE_API_KEY": "AIzaSyCdcnQzkhPflNaZQg6W6L8kBnccR8MmMqo",
-    "AUTH_DOMAIN": "sultan-84ca9.firebaseapp.com",
-    "PROJECT_ID": "sultan-84ca9",
-    "STORAGE_BUCKET": "sultan-84ca9.firebasestorage.app",
-    "MESSAGING_SENDER_ID": "99004924119",
-    "APP_ID": "1:99004924119:web:2448c6b475c79403577092",
-    "MEASUREMENT_ID": "G-YQN96SJ5EV"
+  "DEV_EMAIL": "Hasankanemero2005@gmail.com",
+  "DEV_PASSWORD": "admin12345",
+  "DEV_TOKEN_KEY": "DEV_ACCESS_TOKEN",
+  "DEV_TOKEN_VALUE": "1c32d5e7-a9f0-4b2c-8d1e-5f4b9c8a7d6e",
+  "firebaseConfig": {
+    "apiKey": "AIzaSyCdcnQzkhPflNaZQg6W6L8kBnccR8MmMqo",
+    "authDomain": "sultan-84ca9.firebaseapp.com",
+    "projectId": "sultan-84ca9",
+    "storageBucket": "sultan-84ca9.firebasestorage.app",
+    "messagingSenderId": "99004924119",
+    "appId": "1:99004924119:web:2448c6b475c79403577092",
+    "measurementId": "G-YQN96SJ5EV"
+  }
 }
