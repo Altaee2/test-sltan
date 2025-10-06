@@ -4,10 +4,11 @@ import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, on
 import { getFirestore, doc, setDoc, getDoc, updateDoc, increment, arrayUnion, query, collection, where, getDocs, runTransaction } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-firestore.js";
 
 // ======================================================
-// ** D0. بيانات التهيئة الأساسية — تُحمّل من info.json **
+// ** D0. بيانات المطور والتهيئة — تُحمّل من info.json **
 // ======================================================
 // سيتم تعيينهم عند تحميل info.json
-// بقيت فقط متغيرات التوكن لغرض التحقق من جلسة المطور بعد تسجيل الدخول
+let DEV_EMAIL = null;
+let DEV_PASSWORD = null;
 let DEV_TOKEN_KEY = null;    // سيُقرأ من info.json
 let DEV_TOKEN_VALUE = null;  // سيُقرأ من info.json
 
@@ -22,41 +23,33 @@ let db = null;
 // دالة تحميل بيانات المطور و Firebase Config من ملف info.json
 async function loadConfig() {
     try {
-        // نستخدم __firebase_config و __app_id و __initial_auth_token بدلاً من info.json
-        // وذلك لضمان عمل التطبيق في بيئة Canvas بشكل صحيح
-        if (typeof __firebase_config !== 'undefined' && typeof __app_id !== 'undefined') {
-            firebaseConfig = JSON.parse(__firebase_config);
-            // جلب المتغيرات الثابتة من info.json
-            const configResponse = await fetch('info.json');
-            if (configResponse.ok) {
-                const config = await configResponse.json();
-                DEV_TOKEN_KEY = config.DEV_TOKEN_KEY ?? "DEV_ACCESS_TOKEN";
-                DEV_TOKEN_VALUE = config.DEV_TOKEN_VALUE ?? "DEV_TOKEN_VALUE_PLACEHOLDER";
-            }
-        } else {
-             // Fallback if running outside Canvas (if using the old method)
-             const response = await fetch('info.json');
-             if (!response.ok) {
-                 console.error("Warning: Could not load info.json. Using fallback or blocking access.");
-                 return false;
-             }
-             const config = await response.json();
- 
-             DEV_TOKEN_KEY = config.DEV_TOKEN_KEY ?? "DEV_ACCESS_TOKEN";
-             DEV_TOKEN_VALUE = config.DEV_TOKEN_VALUE ?? "DEV_TOKEN_VALUE_PLACEHOLDER";
-             
-             if (config.firebaseConfig) {
-                 firebaseConfig = config.firebaseConfig;
-             } else {
-                 console.error("No firebaseConfig found in info.json");
-                 return false;
-             }
+        const response = await fetch('info.json');
+        if (!response.ok) {
+            console.error("Warning: Could not load info.json. Using fallback or blocking admin access.");
+            return false;
         }
-        
-        console.log("Configuration loaded successfully.");
+        const config = await response.json();
+
+        // تحديث بيانات المطور
+        DEV_EMAIL = config.DEV_EMAIL ?? null;
+        DEV_PASSWORD = config.DEV_PASSWORD ?? null;
+
+        // تحميل مفاتيح الجلسة الإدارية إن وجدت
+        DEV_TOKEN_KEY = config.DEV_TOKEN_KEY ?? "DEV_ACCESS_TOKEN";
+        DEV_TOKEN_VALUE = config.DEV_TOKEN_VALUE ?? "DEV_TOKEN_VALUE_PLACEHOLDER";
+
+        // تحميل firebaseConfig إذا وُجد
+        if (config.firebaseConfig) {
+            firebaseConfig = config.firebaseConfig;
+        } else {
+            console.error("No firebaseConfig found in info.json");
+            return false;
+        }
+
+        console.log("Configuration loaded successfully from info.json.");
         return true;
     } catch (error) {
-        console.error("Error parsing config:", error);
+        console.error("Error parsing info.json or loading config:", error);
         return false;
     }
 }
@@ -66,138 +59,233 @@ async function loadConfig() {
 // D. إعدادات النظام
 // ======================================================
 const DAILY_GIFT_AMOUNT = 50;
-const COUNTER_INCREMENT = 0; // لم نستخدمه ولكن أبقيناه
+const COUNTER_INCREMENT = 0;
 const COOLDOWN_TIME_MS = 24 * 60 * 60 * 1000;
 const REFERRAL_BONUS = 50; // مكافأة صاحب كود الإحالة
 const TRANSFER_FEE = 5000; // 👈 عمولة تحويل النقاط
 
-// ✅ UID المطور الثابت: سيتم استخدامه للتحقق من هوية المطور بعد تسجيل الدخول العادي
-// يجب تعديل هذا القيمة لتناسب UID الحساب الذي تريد استخدامه كـ Admin
-const ADMIN_UID = "qfy0782dhJXCBPZnBRWn6gHdDEl2";
-
 // قائمة العدادات القابلة للشراء
 const BOOST_ITEMS = [
-    { id: 'boost_1', name: 'عداد يومي مضاعف', price: 10000, dailyIncrement: 2 },
-    { id: 'boost_2', name: 'عداد يومي خماسي', price: 50000, dailyIncrement: 5 },
-    { id: 'boost_3', name: 'عداد يومي عشري', price: 100000, dailyIncrement: 10 },
+    { id: 'boost100', name: 'عداد نقاط +100', value: 100, price: 16000 },
+    { id: 'boost250', name: 'عداد نقاط +250', value: 250, price: 40000 },
+    { id: 'boost500', name: 'عداد نقاط +500', value: 500, price: 80000 },
+    { id: 'boost1000', name: 'عداد نقاط +1000', value: 1000, price: 158000 },
+    { id: 'boost2500', name: 'عداد نقاط +2500', value: 2500, price: 395000 },
+    { id: 'boost5000', name: 'عداد نقاط +5000', value: 5000, price: 775000 },
+    { id: 'boost10000', name: 'عداد نقاط +10000', value: 10000, price: 1540000 },
+    { id: 'boost25000', name: 'عداد نقاط +25000', value: 25000, price: 3825000 },
+    { id: 'boost50000', name: 'عداد نقاط +50000', value: 50000, price: 7500000 },
 ];
 
+// متغيرات لحفظ عدادات التنازلي
+let giftCountdownInterval = null;
+let counterCountdownInterval = null;
+
+
 // ======================================================
-// 1. الوظائف المساعدة العامة (Helper Functions)
+// 1. دوال المساعدة الأساسية
 // ======================================================
 
-function redirectTo(page) {
-    window.location.href = page;
+// دالة توليد رقم معرف فريد للمستخدم (يتكون من 10 أرقام)
+function generateNumericUserId() {
+    const timestampPart = Math.floor(Date.now() / 1000).toString().slice(-6);
+    const randomPart = Math.floor(Math.random() * 9000) + 1000;
+    return parseInt(timestampPart + randomPart.toString());
 }
 
-function displayMessage(message, type = 'info') {
-    const messageContainer = document.getElementById('message-container');
-    if (messageContainer) {
-        // إنشاء عنصر الرسالة
-        const msgElement = document.createElement('div');
-        msgElement.className = `p-3 rounded-lg shadow-md text-sm mb-2 opacity-0 transition-opacity duration-300 transform translate-x-2`;
+// دالة توليد كود إحالة عشوائي (8 خانات أحرف وأرقام إنجليزية)
+function generateReferralCode() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let code = '';
+    for (let i = 0; i < 8; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
+}
 
-        if (type === 'success') {
-            msgElement.classList.add('bg-green-100', 'text-green-700', 'border', 'border-green-300');
-        } else if (type === 'error') {
-            msgElement.classList.add('bg-red-100', 'text-red-700', 'border', 'border-red-300');
-        } else {
-            msgElement.classList.add('bg-blue-100', 'text-blue-700', 'border', 'border-blue-300');
-        }
+// دالة لعرض رسالة 
+function displayMessage(msg, type = 'success') {
+    const messageElement = document.getElementById('message');
+    const isAdminPage = window.location.pathname.endsWith('admin.html') || window.location.pathname.endsWith('admin-login.html');
+    const targetElement = isAdminPage && document.getElementById('admin-message') ? document.getElementById('admin-message') : messageElement;
 
-        msgElement.textContent = message;
-        messageContainer.prepend(msgElement); // عرض الرسائل الأحدث في الأعلى
+    if (!targetElement) return;
 
-        // إظهار الرسالة
-        setTimeout(() => {
-            msgElement.classList.remove('opacity-0', 'translate-x-2');
-        }, 10);
-
-        // إخفاء الرسالة بعد 5 ثواني
-        setTimeout(() => {
-            msgElement.classList.add('opacity-0', 'translate-x-2');
-            msgElement.addEventListener('transitionend', () => msgElement.remove());
-        }, 5000);
+    targetElement.innerHTML = msg; // تم التعديل إلى innerHTML لدعم تنسيق الرسائل الأغنى
+    if (type === 'success') {
+        targetElement.classList.remove('bg-red-100', 'text-red-800', 'bg-blue-100', 'text-blue-800');
+        targetElement.classList.add('bg-green-100', 'text-green-800');
+        targetElement.style.backgroundColor = '#d4edda';
+        targetElement.style.color = '#155724';
+    } else if (type === 'error') {
+        targetElement.classList.remove('bg-green-100', 'text-green-800', 'bg-blue-100', 'text-blue-800');
+        targetElement.classList.add('bg-red-100', 'text-red-800');
+        targetElement.style.backgroundColor = '#f8d7da';
+        targetElement.style.color = '#721c24';
     } else {
-        console.log(`[${type.toUpperCase()}] ${message}`);
+        targetElement.classList.remove('bg-green-100', 'text-green-800', 'bg-red-100', 'text-red-800');
+        targetElement.classList.add('bg-blue-100', 'text-blue-800');
+        targetElement.style.backgroundColor = '#cfe2ff';
+        targetElement.style.color = '#084298';
     }
+
+    targetElement.style.display = 'block';
+    setTimeout(() => {
+        targetElement.style.display = 'none';
+    }, 5000);
+}
+
+// دالة إعادة التوجيه
+function redirectTo(path) {
+    window.location.href = path;
 }
 
 // ======================================================
-// 2. منطق المصادقة وتسجيل الدخول (Auth Logic)
+// 2. منطق المصادقة (Auth Logic)
 // ======================================================
 
-// دالة تهيئة بيانات المستخدم الجديد في Firestore
-async function createNewUserDocument(user, referralCode = null) {
-    // توليد ID رقمي عشوائي من 10 أرقام
-    // بما أننا لا نستخدم هذا الحقل في البحث حالياً (نستخدم UID أو email)، سنزيله للتبسيط إذا لم يكن مستخدماً فعلاً
-    // const numericId = Math.floor(1000000000 + Math.random() * 9000000000).toString(); 
+// البحث عن كود الإحالة للمكافأة
+async function getReferrerByCode(code) {
+    if (!code) return { referrerUid: null, referrerDocRef: null, referrerUsername: null };
 
-    const initialData = {
-        email: user.email,
-        points: 0,
-        is_banned: false,
-        isAdmin: false, 
-        last_daily_claim: new Date(0), 
-        referred_by: referralCode,
-        referrals: 0,
-        boosts: [], 
-        uid: user.uid, 
-        // numeric_id: numericId, // تم إزالة هذا الحقل
-        created_at: new Date(),
-        // حقل العداد الجديد لعمليات addCounter/subtractCounter
-        user_counter: 0, 
-    };
+    // تأكد من أن الكود مكون من 8 أحرف وأرقام إنجليزية
+    const formattedCode = code.toUpperCase().trim();
+    if (formattedCode.length !== 8) return { referrerUid: null, referrerDocRef: null, referrerUsername: null };
+
     try {
-        await setDoc(doc(db, "users", user.uid), initialData);
-        return true;
-    } catch (e) {
-        console.error("Error creating user document: ", e);
-        return false;
+        const usersRef = collection(db, "users");
+        const q = query(usersRef, where("referral_code", "==", formattedCode));
+        const querySnapshot = await getDocs(q);
+
+        if (!querySnapshot.empty) {
+            const doc = querySnapshot.docs[0];
+            return { referrerUid: doc.id, referrerDocRef: doc.ref, referrerUsername: doc.data().username || 'مستخدم غير معروف' };
+        }
+    } catch (error) {
+        console.error("Error finding referrer by code:", error);
     }
+    return { referrerUid: null, referrerDocRef: null, referrerUsername: null };
 }
 
-// منطق التسجيل
+
+// منطق إنشاء الحساب (Register)
 async function handleRegistration(e) {
     e.preventDefault();
-    const email = document.getElementById('register-email').value;
-    const password = document.getElementById('register-password').value;
-    const referralCode = document.getElementById('referral-code')?.value.trim() || null;
+    const email = document.getElementById('reg-email').value;
+    const username = document.getElementById('reg-username').value;
+    const password = document.getElementById('reg-password').value;
+    const confirmPassword = document.getElementById('reg-confirm-password').value;
+    const referralCode = document.getElementById('referral-code').value; // جلب كود الإحالة المدخل
 
-    if (password.length < 6) {
-        displayMessage('❌ كلمة المرور يجب أن تكون 6 أحرف على الأقل.', 'error');
+    if (password !== confirmPassword) {
+        displayMessage('كلمتا السر غير متطابقتين!', 'error');
         return;
     }
 
     try {
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        const user = userCredential.user;
-
-        // 1. إنشاء وثيقة المستخدم
-        await createNewUserDocument(user, referralCode);
-
-        // 2. تطبيق مكافأة الإحالة إذا كان هناك كود صالح
-        if (referralCode) {
-            const success = await applyReferralBonus(user.uid, referralCode);
-            if (success) {
-                displayMessage('✅ تم تطبيق مكافأة الإحالة بنجاح!', 'success');
-            } else {
-                displayMessage('⚠️ كود الإحالة غير صالح أو لم يتم العثور على المستخدم المحيل.', 'info');
+        // 1. توليد كود إحالة فريد للمستخدم الجديد
+        let newReferralCode;
+        let codeExists = true;
+        while (codeExists) {
+            newReferralCode = generateReferralCode();
+            const check = await getReferrerByCode(newReferralCode);
+            if (!check.referrerUid) {
+                codeExists = false;
             }
         }
 
-        displayMessage('✅ تم التسجيل بنجاح! يتم التوجيه إلى لوحة التحكم...', 'success');
-        setTimeout(() => { redirectTo('dashboard.html'); }, 1500);
+        // 2. إنشاء حساب Firebase
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+
+        const numericId = generateNumericUserId();
+
+        // 3. التحقق من كود الإحالة المدخل وتطبيق المكافأة (باستخدام Transaction لضمان الأمان)
+        const referrerData = await getReferrerByCode(referralCode);
+
+        if (referrerData.referrerUid) {
+            // تم استخدام كود إحالة صحيح
+
+            await runTransaction(db, async(transaction) => {
+                const referrerDoc = await transaction.get(referrerData.referrerDocRef);
+
+                if (!referrerDoc.exists) {
+                    throw "Referrer Document does not exist!";
+                }
+
+                // تحديث بيانات صاحب كود الإحالة
+                const newReferrerPoints = referrerDoc.data().points + REFERRAL_BONUS;
+                // تحديث عدد المدعوين
+                const newInvitedCount = (referrerDoc.data().invited_count || 0) + 1;
+
+                transaction.update(referrerData.referrerDocRef, {
+                    points: newReferrerPoints,
+                    referral_earnings: increment(REFERRAL_BONUS),
+                    invited_count: newInvitedCount // تحديث عدد المدعوين
+                });
+
+                // إنشاء وثيقة المستخدم الجديد
+                transaction.set(doc(db, "users", user.uid), {
+                    username: username,
+                    email: email,
+                    numeric_user_id: numericId,
+                    points: 0,
+                    counter_quantity: 0,
+                    last_claimed_date: null,
+                    last_counter_claim: null,
+                    purchase_history: [],
+                    is_banned: false,
+                    isAdmin: false,
+                    referral_code: newReferralCode, // كود الإحالة الخاص به
+                    referred_by_uid: referrerData.referrerUid, // UID الذي قام بإحالته
+                    referred_by_username: referrerData.referrerUsername, // اسم الداعي
+                    referral_earnings: 0,
+                    invited_count: 0, // عدد المدعوين لهذا المستخدم الجديد
+                    createdAt: new Date()
+                });
+            });
+
+            displayMessage(`✅ تم إنشاء الحساب بنجاح! صاحب كود الإحالة (${referralCode}) حصل على ${REFERRAL_BONUS} نقطة.`);
+
+        } else {
+            // لا يوجد كود إحالة أو الكود غير صحيح
+            await setDoc(doc(db, "users", user.uid), {
+                username: username,
+                email: email,
+                numeric_user_id: numericId,
+                points: 0,
+                counter_quantity: 0,
+                last_claimed_date: null,
+                last_counter_claim: null,
+                purchase_history: [],
+                is_banned: false,
+                isAdmin: false,
+                referral_code: newReferralCode, // كود الإحالة الخاص به
+                referred_by_uid: null, // لم تتم الإحالة عن طريق أحد
+                referred_by_username: null,
+                referral_earnings: 0, // ربح الإحالة
+                invited_count: 0,
+                createdAt: new Date()
+            });
+            displayMessage('✅ تم إنشاء الحساب بنجاح!');
+        }
+
+
+        setTimeout(() => { redirectTo('index.html'); }, 2000);
 
     } catch (error) {
-        console.error(error);
+        console.error("خطأ في إنشاء الحساب:", error.code, error.message);
+        let errorMessage = 'حدث خطأ غير متوقع.';
         if (error.code === 'auth/email-already-in-use') {
-            displayMessage('❌ هذا البريد الإلكتروني مستخدم بالفعل.', 'error');
+            errorMessage = 'هذا البريد الإلكتروني مستخدم بالفعل.';
         } else if (error.code === 'auth/invalid-email') {
-            displayMessage('❌ صيغة البريد الإلكتروني غير صالحة.', 'error');
-        } else {
-            displayMessage('❌ حدث خطأ أثناء عملية التسجيل. حاول مرة أخرى.', 'error');
+            errorMessage = 'صيغة البريد الإلكتروني غير صحيحة.';
+        } else if (error.code === 'auth/weak-password') {
+            errorMessage = 'كلمة السر ضعيفة جداً (يجب أن تكون 6 أحرف على الأقل).';
+        } else if (typeof error === 'string') {
+            errorMessage = error; // خطأ من الترانزاكشن
         }
+        displayMessage(`❌ خطأ: ${errorMessage}`, 'error');
     }
 }
 
@@ -211,17 +299,6 @@ async function handleLogin(e) {
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
 
-        // 🛑🛑🛑 التحقق من هوية المطور باستخدام UID الثابت 🛑🛑🛑
-        if (user.uid === ADMIN_UID) {
-            // تسجيل الدخول كـ مطور: حفظ التوكن في الجلسة والتوجيه
-            sessionStorage.setItem(DEV_TOKEN_KEY, DEV_TOKEN_VALUE);
-            displayMessage('✅ تم تسجيل دخول المطور بنجاح. يتم التوجيه...', 'success');
-            setTimeout(() => { redirectTo('admin.html'); }, 1500);
-            return;
-        }
-        // 🛑🛑🛑 نهاية التحقق من هوية المطور 🛑🛑🛑
-
-
         const docSnap = await getDoc(doc(db, "users", user.uid));
 
         if (docSnap.exists()) {
@@ -233,11 +310,9 @@ async function handleLogin(e) {
                 return;
             }
 
-            // منع دخول حسابات isAdmin: true عادية (بالرغم من أن حالة المطور قد تم فحصها بالفعل)
             if (userData.isAdmin) {
-                // قد تكون هذه حالة قديمة، لذا نكتفي بالتحقق من الـ UID أعلاه
                 await signOut(auth);
-                displayMessage('❌ هذا الحساب هو حساب إداري. يرجى تسجيل الدخول من صفحة المطورين.', 'error');
+                displayMessage('❌ هذا الحساب هو حساب مطور. يرجى تسجيل الدخول من صفحة المطورين.', 'error');
                 return;
             }
         }
@@ -246,504 +321,830 @@ async function handleLogin(e) {
         setTimeout(() => { redirectTo('dashboard.html'); }, 1500);
 
     } catch (error) {
-        console.error(error);
-        if (error.code === 'auth/invalid-credential') {
-            displayMessage('❌ البريد الإلكتروني أو كلمة المرور غير صحيحة.', 'error');
-        } else {
-            displayMessage('❌ حدث خطأ أثناء تسجيل الدخول. حاول مرة أخرى.', 'error');
+        console.error("خطأ في تسجيل الدخول:", error.code, error.message);
+        let errorMessage = 'حدث خطأ في تسجيل الدخول.';
+        if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+            errorMessage = 'البريد الإلكتروني أو كلمة السر غير صحيحة.';
         }
+        displayMessage(`❌ خطأ: ${errorMessage}`, 'error');
     }
 }
 
-// دالة تسجيل الخروج
-function handleLogout() {
-    signOut(auth).then(() => {
-        // مسح توكن المطور عند تسجيل الخروج
-        sessionStorage.removeItem(DEV_TOKEN_KEY);
-        displayMessage('👋 تم تسجيل الخروج بنجاح. يتم التوجيه...', 'info');
-        setTimeout(() => { redirectTo('index.html'); }, 1500);
-    }).catch((error) => {
-        console.error("Logout Error:", error);
-        displayMessage('❌ حدث خطأ أثناء تسجيل الخروج.', 'error');
-    });
-}
 
 // ======================================================
 // 3. منطق لوحة تحكم المطور (Admin Panel Logic)
 // ======================================================
 
-// دالة التحقق من الرمز السري للمطور (تبقى للتحقق من الجلسة بعد الدخول)
+// التحقق من صلاحيات المطور والدخول (تحقق داخلي ثابت)
+function handleAdminLogin(e) {
+    e.preventDefault();
+    const email = document.getElementById('admin-email').value;
+    const password = document.getElementById('admin-password').value;
+
+    // التأكد من تحميل البيانات بنجاح
+    if (DEV_EMAIL === null || DEV_PASSWORD === null) {
+        displayMessage('❌ فشل تحميل بيانات المطور. حاول تحديث الصفحة.', 'error');
+        return;
+    }
+
+    if (email === DEV_EMAIL && password === DEV_PASSWORD) {
+        sessionStorage.setItem(DEV_TOKEN_KEY, DEV_TOKEN_VALUE);
+        displayMessage('✅ تم تسجيل دخول المطور بنجاح.');
+        redirectTo('admin.html');
+    } else {
+        displayMessage('❌ بيانات الدخول الإدارية غير صحيحة.', 'error');
+    }
+}
+
+// دالة التحقق من الرمز السري للمطور
 function isAuthenticatedAdmin() {
-    // يجب أيضاً التحقق من أن المستخدم الحالي هو ADMIN_UID في onAuthStateChanged
     return sessionStorage.getItem(DEV_TOKEN_KEY) === DEV_TOKEN_VALUE;
 }
 
-// دالة البحث عن المستخدم بواسطة UID أو البريد الإلكتروني
-async function searchUser(e) {
-    e.preventDefault();
-    const searchTerm = document.getElementById('search-id').value.trim();
-    const adminActions = document.getElementById('adminPanelActions');
-    const userDataDisplay = document.getElementById('user-data-display');
-    const targetUidInput = document.getElementById('target-uid');
-    const statusAlert = document.getElementById('status-alert');
-
-    userDataDisplay.innerHTML = '<p class="text-center italic text-gray-400">جاري البحث...</p>';
-    adminActions.style.display = 'none';
-    targetUidInput.value = '';
-    statusAlert.classList.add('hidden');
-    
-    if (!searchTerm) {
-        displayMessage('❌ يرجى إدخال UID أو بريد إلكتروني للبحث.', 'error');
-        return;
+// البحث عن المستخدم باستخدام الـ ID الرقمي (للمطور)
+async function findUserByNumericId(numericIdString) {
+    const adminMessage = document.getElementById('admin-message');
+    if (adminMessage) {
+        displayMessage('جارٍ البحث...', 'info');
     }
 
     try {
-        let q;
-        let userDoc;
+        const numericId = parseInt(numericIdString, 10);
 
-        // البحث بواسطة البريد الإلكتروني إذا كان يحتوي على @
-        if (searchTerm.includes('@')) {
-            q = query(collection(db, "users"), where("email", "==", searchTerm));
-            const snapshot = await getDocs(q);
-            if (!snapshot.empty) {
-                userDoc = snapshot.docs[0];
-            }
-        } else {
-            // البحث بواسطة UID
-            userDoc = await getDoc(doc(db, "users", searchTerm));
+        if (isNaN(numericId) || numericId <= 0) {
+            if (adminMessage) displayMessage('❌ المعرّف المدخل غير صالح أو ليس رقماً.', 'error');
+            return null;
         }
 
-        if (userDoc && userDoc.exists()) {
-            const userData = userDoc.data();
-            const uid = userDoc.id;
-            
-            // تخزين الـ UID المستهدف
-            targetUidInput.value = uid;
-            
-            displayUserData(userData, uid);
-            adminActions.style.display = 'block';
+        const usersRef = collection(db, "users");
+        const q = query(usersRef, where("numeric_user_id", "==", numericId));
+        const querySnapshot = await getDocs(q);
 
-        } else {
-            userDataDisplay.innerHTML = '<p class="text-center italic text-red-500">❌ لم يتم العثور على مستخدم بالمعلومات المدخلة.</p>';
-            adminActions.style.display = 'none';
+        if (querySnapshot.empty) {
+            if (adminMessage) displayMessage('❌ لم يتم العثور على مستخدم بهذا المعرّف.', 'error');
+            return null;
         }
+
+        const userDoc = querySnapshot.docs[0];
+        const userData = userDoc.data();
+        userData.uid = userDoc.id; // إضافة UID الخاص بـ Firebase للرجوع إليه
+        if (adminMessage) displayMessage('✅ تم العثور على المستخدم بنجاح.', 'success');
+        return userData;
 
     } catch (error) {
-        console.error("Error searching user:", error);
-        userDataDisplay.innerHTML = '<p class="text-center italic text-red-500">❌ حدث خطأ أثناء البحث عن المستخدم.</p>';
+        console.error("خطأ في البحث عن المستخدم:", error);
+        if (adminMessage) displayMessage('❌ فشلت عملية البحث (تحقق من الاتصال أو تأكد من وجود فهرس لهذا الحقل في قاعدة البيانات).', 'error');
+        return null;
     }
 }
 
-// دالة عرض بيانات المستخدم
-function displayUserData(userData, uid) {
-    const userDataDisplay = document.getElementById('user-data-display');
-    const statusAlert = document.getElementById('status-alert');
+// دالة تنفيذ الإجراءات الإدارية
+async function executeAdminAction(targetUserUid, actionType, value) {
+    const userDocRef = doc(db, "users", targetUserUid);
+    let successMessage = '✅ تم تنفيذ الإجراء بنجاح.';
 
-    // تحديد حالة الحساب
-    let statusText = '';
-    let statusClass = '';
-
-    if (uid === ADMIN_UID) {
-        statusText = '⚠️ هذا الحساب هو حساب المطور الرئيسي (ADMIN).';
-        statusClass = 'bg-yellow-100 text-yellow-800';
-    } else if (userData.is_banned) {
-        statusText = '🚫 هذا الحساب محظور (BANNED).';
-        statusClass = 'bg-red-100 text-red-800';
-    } else {
-        statusText = '✅ حالة الحساب: نشط (Active).';
-        statusClass = 'bg-green-100 text-green-800';
-    }
-    
-    // عرض البيانات (تم إضافة حقل العداد)
-    userDataDisplay.innerHTML = `
-        <p><span class="font-semibold">UID:</span> <span class="text-xs break-all">${uid}</span></p>
-        <p><span class="font-semibold">البريد الإلكتروني:</span> ${userData.email}</p>
-        <p><span class="font-semibold">النقاط الحالية:</span> <span class="text-blue-600 font-bold">${(userData.points || 0).toLocaleString()}</span></p>
-        <p><span class="font-semibold">عداد المستخدم:</span> <span class="text-purple-600 font-bold">${(userData.user_counter || 0).toLocaleString()}</span></p>
-        <p><span class="font-semibold">الإحالات:</span> ${userData.referrals || 0}</p>
-        <p><span class="font-semibold">آخر مطالبة يومية:</span> ${userData.last_daily_claim ? new Date(userData.last_daily_claim.toMillis()).toLocaleString() : 'لم يطالب بعد'}</p>
-        <p><span class="font-semibold">عدادات مشتراة:</span> ${userData.boosts?.join(', ') || 'لا توجد'}</p>
-    `;
-
-    // عرض حالة التنبيه
-    statusAlert.textContent = statusText;
-    statusAlert.className = `mt-4 p-3 rounded-lg text-center font-bold ${statusClass}`;
-    statusAlert.classList.remove('hidden');
-}
-
-
-// دالة معالجة وتنفيذ الإجراء الإداري
-async function executeAdminAction(e) {
-    e.preventDefault();
-    const targetUid = document.getElementById('target-uid').value;
-    const actionType = document.getElementById('action-type').value;
-    const actionValueInput = document.getElementById('action-value');
-    let actionValue = actionValueInput.value.trim();
-
-    if (!targetUid) {
-        displayMessage('❌ يجب البحث عن مستخدم أولاً.', 'error');
-        return;
-    }
-    
-    // لا يمكن إجراء أي تعديل على حساب المطور الثابت
-    if (targetUid === ADMIN_UID && actionType !== 'banAccount' && actionType !== 'unbanAccount') {
-        displayMessage('❌ لا يمكنك تعديل بيانات حساب المطور نفسه.', 'error');
-        return;
-    }
-    // ملاحظة: لا يمكن حظر حساب المطور نفسه
-    if (targetUid === ADMIN_UID && actionType === 'banAccount') {
-         displayMessage('❌ لا يمكنك حظر حساب المطور نفسه.', 'error');
-         return;
-    }
-
+    displayMessage('جارٍ تنفيذ الإجراء...');
 
     try {
-        const userRef = doc(db, "users", targetUid);
-
         switch (actionType) {
+            case 'updateEmail':
+                // ملاحظة: تحديث البريد الإلكتروني في Firestore لا يغيره في Firebase Auth.
+                // يجب استخدام دالة updateEmail من Firebase Auth إذا أردت تحديث الحساب الفعلي.
+                await updateDoc(userDocRef, { email: value });
+                successMessage = `✅ تم تحديث البريد الإلكتروني في Firestore إلى: ${value}.`;
+                break;
             case 'addPoints':
             case 'subtractPoints':
+                const pointsChange = actionType === 'addPoints' ? value : -value;
+                await updateDoc(userDocRef, { points: increment(pointsChange) });
+                successMessage = actionType === 'addPoints' ?
+                    `✅ تم إضافة ${value} نقطة بنجاح.` :
+                    `✅ تم خصم ${value} نقطة بنجاح.`;
+                break;
             case 'addCounter':
             case 'subtractCounter':
-                const amount = parseInt(actionValue);
-                if (isNaN(amount) || amount <= 0) {
-                    displayMessage('❌ يجب إدخال قيمة رقمية صحيحة وموجبة.', 'error');
-                    return;
-                }
-                
-                let updateData = {};
-                let fieldToUpdate = '';
-                
-                if (actionType.includes('Points')) {
-                    fieldToUpdate = 'points';
-                } else if (actionType.includes('Counter')) {
-                    fieldToUpdate = 'user_counter'; // استخدام الحقل الجديد
-                }
-
-                const finalAmount = (actionType.includes('subtract')) ? -amount : amount;
-                
-                // استخدام runTransaction لضمان تحديث آمن (خاصة للخصم)
-                await runTransaction(db, async (transaction) => {
-                    const docSnap = await transaction.get(userRef);
-                    if (!docSnap.exists()) throw new Error("User document does not exist.");
-                    
-                    const currentValue = docSnap.data()[fieldToUpdate] || 0;
-                    const newValue = currentValue + finalAmount;
-
-                    if (newValue < 0) {
-                        // منع تحول النقاط/العداد إلى سالب عند الخصم
-                        throw new Error(`Cannot subtract ${amount.toLocaleString()}. The final value of ${fieldToUpdate} would be negative.`);
-                    }
-
-                    updateData[fieldToUpdate] = increment(finalAmount);
-                    transaction.update(userRef, updateData);
-                });
-
-
-                displayMessage(`✅ تم تنفيذ الإجراء: ${actionType} بنجاح!`, 'success');
+                const counterChange = actionType === 'addCounter' ? value : -value;
+                await updateDoc(userDocRef, { counter_quantity: increment(counterChange) });
+                successMessage = actionType === 'addCounter' ?
+                    `✅ تم إضافة ${value} للعداد بنجاح.` :
+                    `✅ تم خصم ${value} من العداد بنجاح.`;
                 break;
-
             case 'banAccount':
-                await updateDoc(userRef, { is_banned: true });
-                displayMessage('✅ تم تجميد (حظر) الحساب بنجاح!', 'success');
+                await updateDoc(userDocRef, { is_banned: true });
+                successMessage = '❌ تم تجميد الحساب بنجاح.';
                 break;
-
             case 'unbanAccount':
-                await updateDoc(userRef, { is_banned: false });
-                displayMessage('✅ تم إلغاء تجميد الحساب بنجاح!', 'success');
+                await updateDoc(userDocRef, { is_banned: false });
+                successMessage = '✅ تم إلغاء تجميد الحساب بنجاح.';
                 break;
-                
-            case 'updateEmail':
-                const newEmail = actionValue;
-                if (!newEmail || !newEmail.includes('@')) {
-                    displayMessage('❌ يرجى إدخال بريد إلكتروني صحيح.', 'error');
-                    return;
-                }
-                // تحديث البريد الإلكتروني في وثيقة المستخدم (لا يمكن تحديثه في Auth هنا)
-                await updateDoc(userRef, { email: newEmail });
-                displayMessage('✅ تم تحديث البريد الإلكتروني في وثيقة المستخدم بنجاح.', 'success');
-                
-                // رسالة تنبيه بضرورة تحديث Auth يدوياً
-                displayMessage('⚠️ تذكر أنك تحتاج لتحديث البريد الإلكتروني في Firebase Authentication بشكل منفصل!', 'info');
-                break;
-
             default:
-                displayMessage('❌ يرجى اختيار إجراء صالح.', 'error');
-                return;
+                throw new Error("نوع الإجراء غير معروف.");
         }
 
-        // بعد التنفيذ، أعد تحميل بيانات المستخدم المعروضة
-        const userDoc = await getDoc(userRef);
-        if (userDoc.exists()) {
-            displayUserData(userDoc.data(), userDoc.id);
-        }
+        displayMessage(successMessage, 'success');
+        return await findUserByNumericId(document.getElementById('search-id').value);
 
     } catch (error) {
-        console.error("Error executing admin action:", error);
-        
-        let errorMessage = '❌ فشل تنفيذ الإجراء. حاول مرة أخرى.';
-        if (typeof error === 'object' && error.message) {
-            if (error.message.includes('negative')) {
-                errorMessage = '❌ فشل الخصم: القيمة النهائية للنقاط/العداد ستكون سالبة.';
-            } else {
-                errorMessage = `❌ فشل تنفيذ الإجراء: ${error.message}`;
-            }
-        }
-        
-        displayMessage(errorMessage, 'error');
+        console.error("خطأ في تنفيذ الإجراء:", error);
+        displayMessage(`❌ فشل تنفيذ الإجراء: ${error.message}`, 'error');
+        return null;
     }
 }
 
-// تحديث الواجهة بناءً على نوع الإجراء
-function updateActionUI() {
-    const actionType = document.getElementById('action-type').value;
-    const valueGroup = document.getElementById('action-value-group');
-    const valueLabel = document.getElementById('value-label');
-    const valueInput = document.getElementById('action-value');
-
-    // افتراضياً إظهار القيمة
-    valueGroup.style.display = 'block';
-
-    switch (actionType) {
-        case 'addPoints':
-        case 'subtractPoints':
-        case 'addCounter':
-        case 'subtractCounter':
-            valueLabel.textContent = 'العدد (موجب دائماً):';
-            valueInput.type = 'number';
-            valueInput.placeholder = 'أدخل قيمة النقاط/العداد';
-            break;
-            
-        case 'updateEmail':
-            valueLabel.textContent = 'البريد الإلكتروني الجديد:';
-            valueInput.type = 'email';
-            valueInput.placeholder = 'example@domain.com';
-            break;
-
-        case 'banAccount':
-        case 'unbanAccount':
-            // إخفاء حقل القيمة لعمليات الحظر/إلغاء الحظر
-            valueGroup.style.display = 'none';
-            break;
-            
-        default:
-            valueLabel.textContent = 'القيمة/المعلومة:';
-            valueInput.type = 'text';
-            valueInput.placeholder = 'القيمة المطلوبة';
-            valueGroup.style.display = 'none';
-    }
-}
-
-// تهيئة لوحة المطور
+// دالة تحميل واجهة المطور
 function setupAdminPanel() {
-    if (!isAuthenticatedAdmin()) return;
+    const adminPanel = document.getElementById('adminPanel');
+    if (!adminPanel) return;
+
+    if (!isAuthenticatedAdmin()) {
+        redirectTo('admin-login.html');
+        return;
+    }
+
+    let targetUserUid = null;
 
     const searchForm = document.getElementById('search-form');
-    if (searchForm) searchForm.addEventListener('submit', searchUser);
-    
-    const actionTypeSelect = document.getElementById('action-type');
-    if (actionTypeSelect) actionTypeSelect.addEventListener('change', updateActionUI);
-
     const actionForm = document.getElementById('action-form');
-    if (actionForm) actionForm.addEventListener('submit', executeAdminAction);
-    
-    // إخفاء حقل القيمة عند التحميل الأولي
-    updateActionUI();
+    const userDataDisplay = document.getElementById('user-data-display');
+
+    searchForm.addEventListener('submit', async(e) => {
+        e.preventDefault();
+        const numericId = document.getElementById('search-id').value;
+
+        if (!numericId || isNaN(parseInt(numericId, 10))) {
+            displayMessage('❌ الرجاء إدخال ID رقمي صالح.', 'error');
+            return;
+        }
+
+        const userData = await findUserByNumericId(numericId);
+
+        if (userData) {
+            targetUserUid = userData.uid;
+            // عرض بيانات المستخدم في الواجهة
+            userDataDisplay.innerHTML = `
+                <h4 class="text-lg font-semibold text-gray-800 border-b pb-2 mb-2">بيانات المستخدم المستهدف</h4>
+                <p><strong>UID (فايربيس):</strong> ${userData.uid}</p>
+                <p><strong>ID الرقمي:</strong> <span class="text-green-600 font-bold">${userData.numeric_user_id}</span></p>
+                <p><strong>البريد الإلكتروني:</strong> ${userData.email}</p>
+                <p><strong>اسم المستخدم:</strong> ${userData.username}</p>
+                <p><strong>النقاط:</strong> <span id="display-points" class="font-bold">${userData.points}</span></p>
+                <p><strong>كمية العداد:</strong> <span id="display-counter" class="font-bold">${userData.counter_quantity}</span></p>
+                <p><strong>كود الإحالة:</strong> <span class="font-bold text-blue-600">${userData.referral_code || 'غير متوفر'}</span></p>
+                <p><strong>أرباح الإحالة:</strong> <span class="font-bold text-orange-600">${userData.referral_earnings !== undefined ? userData.referral_earnings : 0} نقطة</span></p>
+                <p><strong>عدد المدعوين:</strong> <span class="font-bold text-green-600">${userData.invited_count !== undefined ? userData.invited_count : 0}</span></p>
+                <p><strong>حالة الحساب:</strong> <span id="display-status" class="font-bold ${userData.is_banned ? 'text-red-600' : 'text-green-600'}">${userData.is_banned ? 'مُجَمَّد' : 'نشط'}</span></p>
+            `;
+            actionForm.style.display = 'block';
+        } else {
+            userDataDisplay.innerHTML = '<p>قم بالبحث عن مستخدم باستخدام الـ ID الرقمي أعلاه.</p>';
+            actionForm.style.display = 'none';
+            targetUserUid = null;
+        }
+    });
+
+    actionForm.addEventListener('submit', async(e) => {
+        e.preventDefault();
+        if (!targetUserUid) {
+            displayMessage('❌ الرجاء البحث عن مستخدم أولاً.', 'error');
+            return;
+        }
+
+        const actionType = document.getElementById('action-type').value;
+        let value = document.getElementById('action-value').value;
+
+        if (['addPoints', 'subtractPoints', 'addCounter', 'subtractCounter'].includes(actionType)) {
+            value = parseInt(value, 10);
+            if (isNaN(value) || value <= 0) {
+                displayMessage('❌ القيمة يجب أن تكون رقماً موجباً.', 'error');
+                return;
+            }
+        } else if (actionType === 'updateEmail') {
+            if (!value || !value.includes('@') || !value.includes('.')) {
+                displayMessage('❌ الرجاء إدخال بريد إلكتروني صحيح.', 'error');
+                return;
+            }
+        } else if (['banAccount', 'unbanAccount'].includes(actionType)) {
+            value = null;
+        } else if (!actionType) {
+            displayMessage('❌ الرجاء اختيار نوع الإجراء.', 'error');
+            return;
+        }
+
+
+        const updatedUserData = await executeAdminAction(targetUserUid, actionType, value);
+
+        if (updatedUserData) {
+            document.getElementById('display-points').textContent = updatedUserData.points;
+            document.getElementById('display-counter').textContent = updatedUserData.counter_quantity;
+            const statusSpan = document.getElementById('display-status');
+            statusSpan.textContent = updatedUserData.is_banned ? 'مُجَمَّد' : 'نشط';
+            statusSpan.className = `font-bold ${updatedUserData.is_banned ? 'text-red-600' : 'text-green-600'}`;
+        }
+    });
+
+    document.getElementById('action-type').addEventListener('change', (e) => {
+        const valueInputGroup = document.getElementById('action-value-group');
+        const actionType = e.target.value;
+        const actionValueInput = document.getElementById('action-value');
+
+        if (['addPoints', 'subtractPoints', 'addCounter', 'subtractCounter', 'updateEmail'].includes(actionType)) {
+            valueInputGroup.style.display = 'block';
+            actionValueInput.type = actionType === 'updateEmail' ? 'email' : 'number';
+            actionValueInput.placeholder = actionType === 'updateEmail' ? 'البريد الإلكتروني الجديد' : 'القيمة (رقم)';
+            actionValueInput.required = true;
+        } else {
+            valueInputGroup.style.display = 'none';
+            actionValueInput.value = '';
+            actionValueInput.required = false;
+        }
+    });
+
+    document.getElementById('action-type').dispatchEvent(new Event('change'));
 }
 
 
 // ======================================================
-// 4. منطق لوحة التحكم (Dashboard Logic) - (بقية الدوال تبقى كما هي)
+// 4. منطق الداشبورد (Dashboard Logic)
 // ======================================================
 
-// دالة المطالبة اليومية (مفيدة لو تم استدعاؤها)
-async function claimDailyPoints(user) {
-    const claimButton = document.getElementById('claim-daily-btn');
-    if (claimButton) claimButton.disabled = true;
+// دالة المطالبة بالهدية اليومية 
+async function claimDailyGift(user, giftBtn) {
     try {
-        await runTransaction(db, async (transaction) => {
-            const userRef = doc(db, "users", user.uid);
-            const userDoc = await transaction.get(userRef);
-            if (!userDoc.exists()) throw "User document not found!";
-            const userData = userDoc.data();
-            const now = Date.now();
-            const lastClaimTime = userData.last_daily_claim ? userData.last_daily_claim.toMillis() : new Date(0).getTime();
-            if (now - lastClaimTime < COOLDOWN_TIME_MS) return; 
+        const userDocRef = doc(db, "users", user.uid);
+        giftBtn.disabled = true;
+        document.getElementById('gift-text').textContent = 'جارٍ المطالبة...';
 
-            const totalPointsToAdd = getDailyIncrementAmount(userData); 
-            transaction.update(userRef, {
-                points: increment(totalPointsToAdd),
-                last_daily_claim: new Date(),
-            });
-
-            displayMessage(`✅ تمت إضافة ${totalPointsToAdd} نقطة يومية بنجاح!`, 'success');
+        await updateDoc(userDocRef, {
+            points: increment(DAILY_GIFT_AMOUNT),
+            last_claimed_date: Date.now()
         });
-        loadDashboardData(user, true);
+
+        await loadDashboardData(user, true);
+        displayMessage(`🎉 تهانينا! لقد حصلت على ${DAILY_GIFT_AMOUNT} نقطة.`, 'success');
 
     } catch (error) {
-        console.error("Daily Claim Error:", error);
-        displayMessage('❌ فشل في المطالبة بالنقاط اليومية. حاول مرة أخرى.', 'error');
-    } finally {
-        if (claimButton) claimButton.disabled = false;
+        console.error("خطأ في المطالبة بالهدية:", error);
+        displayMessage('❌ فشل المطالبة بالهدية اليومية.', 'error');
+        giftBtn.disabled = false;
+        document.getElementById('gift-text').textContent = 'حدث خطأ. حاول مجدداً.';
     }
 }
 
-// الحصول على القيمة الحالية للعداد اليومي بناءً على البوستات
-function getDailyIncrementAmount(userData) {
-    let incrementAmount = DAILY_GIFT_AMOUNT; 
-    if (userData.boosts && userData.boosts.length > 0) {
-        userData.boosts.forEach(boostId => {
-            const boost = BOOST_ITEMS.find(item => item.id === boostId);
-            if (boost) {
-                incrementAmount += boost.dailyIncrement;
-            }
-        });
+// دالة التحقق من حالة الهدية وعرض العداد التنازلي 
+function checkAndDisplayDailyGiftStatus(userData, user) {
+    const giftBtn = document.getElementById('daily-gift-btn');
+    const giftText = document.getElementById('gift-text');
+    const timerElement = document.getElementById('countdown-timer');
+
+    if (!giftBtn || !timerElement) return;
+
+    if (giftCountdownInterval) {
+        clearInterval(giftCountdownInterval);
+        giftCountdownInterval = null;
     }
-    return Math.max(incrementAmount, 1);
-}
 
-// تحميل بيانات لوحة التحكم (مطلوبة لتحديث حالة المستخدم بعد المطالبة)
-async function loadDashboardData(user, forceReload = false) {
-    const dashboard = document.getElementById('dashboard');
-    if (!dashboard) return;
+    const lastClaimed = userData.last_claimed_date || 0;
+    const now = Date.now();
+    const nextClaimTime = lastClaimed + COOLDOWN_TIME_MS;
+    const timeRemaining = nextClaimTime - now;
 
-    const userRef = doc(db, "users", user.uid);
+    if (timeRemaining <= 0) {
+        giftBtn.disabled = false;
+        giftText.textContent = `اضغط للمطالبة بـ ${DAILY_GIFT_AMOUNT} نقطة!`;
+        timerElement.textContent = 'الهدية جاهزة الآن.';
 
-    if (!forceReload) {
-        if (window.dashboardListener) return;
+        if (!giftBtn.hasListener) {
+            giftBtn.addEventListener('click', () => claimDailyGift(user, giftBtn));
+            giftBtn.hasListener = true;
+        }
 
-        window.dashboardListener = onSnapshot(userRef, (docSnap) => {
-            if (docSnap.exists()) {
-                const userData = docSnap.data();
-                if (userData.is_banned) {
-                    signOut(auth);
-                    displayMessage('❌ تم تجميد حسابك. سيتم تسجيل الخروج.', 'error');
-                    return;
-                }
-                renderDashboard(userData);
-            } else {
-                displayMessage('❌ وثيقة المستخدم غير موجودة. يرجى إعادة تسجيل الدخول.', 'error');
-                signOut(auth);
-            }
-        }, (error) => {
-            console.error("Error listening to user data:", error);
-            displayMessage('❌ خطأ في تحميل بيانات لوحة التحكم.', 'error');
-        });
     } else {
-        try {
-            const docSnap = await getDoc(userRef);
-            if (docSnap.exists()) {
-                renderDashboard(docSnap.data());
+        giftBtn.disabled = true;
+        giftText.textContent = 'الرجاء الانتظار...';
+
+        const updateTimer = () => {
+            const currentRemaining = nextClaimTime - Date.now();
+            if (currentRemaining <= 1000) {
+                clearInterval(giftCountdownInterval);
+                checkAndDisplayDailyGiftStatus(userData, user);
+                return;
             }
-        } catch (error) {
-            console.error("Error force loading user data:", error);
-        }
+
+            const totalSeconds = Math.floor(currentRemaining / 1000);
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = totalSeconds % 60;
+
+            timerElement.textContent = `الوقت المتبقي: ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        };
+
+        updateTimer();
+        giftCountdownInterval = setInterval(updateTimer, 1000);
     }
 }
 
-// عرض بيانات لوحة التحكم
-function renderDashboard(userData) {
-    const userPointsEl = document.getElementById('user-points');
-    if (userPointsEl) userPointsEl.textContent = (userData.points || 0).toLocaleString();
-    
-    const claimButton = document.getElementById('claim-daily-btn');
-    const lastClaim = userData.last_daily_claim ? userData.last_daily_claim.toMillis() : new Date(0).getTime();
-    const timeSinceLastClaim = Date.now() - lastClaim;
 
-    if (claimButton) {
-        if (timeSinceLastClaim < COOLDOWN_TIME_MS) {
-            claimButton.disabled = true;
-            claimButton.textContent = 'انتظر 24 ساعة';
-        } else {
-            claimButton.disabled = false;
-            claimButton.textContent = 'المطالبة اليومية الآن';
-        }
-    }
-}
-
-// منطق تحويل النقاط (العملية الفعلية)
-async function executePointTransfer(senderUid, recipientUid, amount) {
-    if (senderUid === recipientUid) {
-        displayMessage('❌ لا يمكنك التحويل لنفسك.', 'error');
-        return false;
-    }
-
-    const totalCost = amount + TRANSFER_FEE;
-
+// دالة زيادة العداد التلقائي
+// ✅ دالة الزيادة اليدوية للعداد
+async function claimManualCounterBoost(user, counterQuantity, btn) {
     try {
-        await runTransaction(db, async (transaction) => {
-            const senderRef = doc(db, "users", senderUid);
-            const recipientRef = doc(db, "users", recipientUid);
+        const userDocRef = doc(db, "users", user.uid);
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-hourglass-half mr-2"></i> جارٍ التنفيذ...';
 
-            const senderDoc = await transaction.get(senderRef);
-            const recipientDoc = await transaction.get(recipientRef);
-
-            if (!senderDoc.exists() || !recipientDoc.exists()) {
-                throw "Sender or Recipient document not found!";
-            }
-
-            const senderData = senderDoc.data();
-            const recipientData = recipientDoc.data();
-
-            if (senderData.points < totalCost) {
-                throw "Insufficient balance to cover the amount and the fee.";
-            }
-            
-            if (recipientData.is_banned) {
-                throw "Recipient is banned.";
-            }
-
-            transaction.update(senderRef, {
-                points: increment(-totalCost)
-            });
-
-            transaction.update(recipientRef, {
-                points: increment(amount)
-            });
-
+        // تحديث البيانات في Firestore
+        await updateDoc(userDocRef, {
+            points: increment(counterQuantity),
+            last_counter_claim: Date.now()
         });
-        displayMessage(`✅ تم تحويل ${amount.toLocaleString()} نقطة بنجاح. العمولة: ${TRANSFER_FEE.toLocaleString()} نقطة.`, 'success');
-        return true;
+
+        // جلب البيانات من السيرفر بعد التحديث
+        const updatedDoc = await getDoc(userDocRef);
+        const updatedPoints = updatedDoc.exists() ? updatedDoc.data().points : 0;
+
+        displayMessage(`🎉 تمت إضافة ${counterQuantity} نقطة إلى رصيدك!<br>💰 رصيدك الحالي الآن: ${updatedPoints} نقطة.`, 'success');
+        await loadDashboardData(user, true);
     } catch (error) {
-        console.error("Transaction failed:", error);
-        if (error === "Insufficient balance to cover the amount and the fee.") {
-            displayMessage('❌ الرصيد غير كافٍ لتغطية المبلغ والعمولة المطلوبة.', 'error');
-        } else if (error === "Recipient is banned.") {
-             displayMessage('❌ فشل التحويل: لا يمكن التحويل إلى مستخدم محظور.', 'error');
-        } else if (typeof error === 'string' && error.includes("Recipient")) {
-            displayMessage('❌ فشل التحويل: لم يتم العثور على المستخدم المستلم.', 'error');
-        } else {
-            displayMessage('❌ فشل التحويل. يرجى المحاولة لاحقاً.', 'error');
-        }
-        return false;
+        console.error("خطأ في زيادة العداد اليدوية:", error);
+        displayMessage('❌ فشل تنفيذ العملية. حاول مجددًا.', 'error');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-bolt mr-2"></i> زيادة العداد الآن';
     }
 }
 
-// تطبيق مكافأة الإحالة (متبقية لضمان الاكتمال)
-async function applyReferralBonus(newUserId, referrerEmailOrUID) {
-    // ... (منطق تطبيق الإحالة) ...
-    return true; 
+// ✅ دالة فحص حالة العداد اليدوي (تُعرض الزر أو الوقت)
+function checkAndDisplayCounterStatus(userData, user) {
+    const timerElement = document.getElementById('counter-timer');
+    const manualBtn = document.getElementById('manual-counter-btn');
+    if (!timerElement || !manualBtn) return;
+
+    if (counterCountdownInterval) {
+        clearInterval(counterCountdownInterval);
+        counterCountdownInterval = null;
+    }
+
+    const counterQuantity = userData.counter_quantity || 0;
+    const lastClaimed = userData.last_counter_claim || 0;
+    const now = Date.now();
+    const nextClaimTime = lastClaimed + COOLDOWN_TIME_MS;
+    const timeRemaining = nextClaimTime - now;
+
+    // إذا المستخدم ما عنده عداد
+    if (counterQuantity <= 0) {
+        manualBtn.style.display = 'none';
+        timerElement.textContent = 'ليس لديك عداد لتفعيله حالياً.';
+        return;
+    }
+
+    if (timeRemaining <= 0) {
+        // جاهز للتفعيل اليدوي
+        manualBtn.style.display = 'flex';
+        timerElement.textContent = 'العداد جاهز للتفعيل الآن.';
+        manualBtn.disabled = false;
+        manualBtn.innerHTML = '<i class="fa-solid fa-bolt mr-2"></i> زيادة العداد الآن';
+
+        if (!manualBtn.hasListener) {
+            manualBtn.addEventListener('click', () => {
+                claimManualCounterBoost(user, counterQuantity, manualBtn);
+            });
+            manualBtn.hasListener = true;
+        }
+    } else {
+        // قيد الانتظار (عرض العد التنازلي)
+        manualBtn.style.display = 'none';
+
+        const updateTimer = () => {
+            const currentRemaining = nextClaimTime - Date.now();
+            if (currentRemaining <= 0) {
+                clearInterval(counterCountdownInterval);
+                checkAndDisplayCounterStatus(userData, user);
+                return;
+            }
+
+            const totalSeconds = Math.floor(currentRemaining / 1000);
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = totalSeconds % 60;
+
+            timerElement.textContent =
+                `⏳ الوقت المتبقي: ${hours.toString().padStart(2, '0')}:${minutes
+                    .toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        };
+
+        updateTimer();
+        counterCountdownInterval = setInterval(updateTimer, 1000);
+    }
 }
-function copyReferralCode() { /* ... */ }
-async function loadBoostsPageData(user) { /* ... */ }
-async function handleBoostPurchase(e) { /* ... */ }
-function setupTermsModal() { /* ... */ }
+
+// دالة عرض كود الإحالة للمستخدم (تم الإبقاء عليها للاستخدام كـ Modal أو رسالة)
+function displayReferralCodeMessage(userData) {
+    const code = userData.referral_code || 'N/A';
+    const earnings = userData.referral_earnings !== undefined ? userData.referral_earnings : 0;
+
+    const message = `
+        <span class="font-bold">كود الإحالة الخاص بك:</span> 
+        <span class="text-blue-600 font-extrabold text-xl">${code}</span>
+        <br>
+        شارك الكود مع أصدقائك وكسب ${REFERRAL_BONUS} نقطة لكل شخص ينضم!
+        <br>
+        (مجموع أرباح الإحالة: ${earnings} نقطة)
+    `;
+
+    displayMessage(message, 'info');
+}
+
+
+// دالة تحميل بيانات الداشبورد (تم تحديثها لحل مشكلة "تحميل...")
+async function loadDashboardData(user, forceReload = false) {
+    const docRef = doc(db, "users", user.uid);
+    const docSnap = await getDoc(docRef, { source: forceReload ? 'server' : 'default' });
+
+    if (docSnap.exists()) {
+        const userData = docSnap.data();
+
+        if (userData.is_banned || userData.isAdmin) {
+            await signOut(auth);
+            redirectTo(userData.isAdmin ? 'admin-login.html' : 'index.html');
+            displayMessage('❌ لا يمكن الوصول.', 'error');
+            return;
+        }
+
+        // تحديث واجهة المستخدم
+        const accountNameElement = document.getElementById('account-name');
+        const pointsCountElement = document.getElementById('points-count');
+        const counterQuantityElement = document.getElementById('counter-quantity');
+        const userIdElement = document.getElementById('numeric-user-id');
+        const referralCodeElement = document.getElementById('referral-code');
+        const referrerNameElement = document.getElementById('referrer-name');
+        const invitedCountElement = document.getElementById('invited-count');
+
+        if (accountNameElement) accountNameElement.textContent = userData.username || 'المستخدم';
+        if (pointsCountElement) pointsCountElement.textContent = userData.points !== undefined ? userData.points.toLocaleString('en-US') : '0';
+        if (counterQuantityElement) counterQuantityElement.textContent = userData.counter_quantity !== undefined ? userData.counter_quantity.toLocaleString('en-US') : '0';
+        if (userIdElement) userIdElement.textContent = userData.numeric_user_id !== undefined ? userData.numeric_user_id.toString() : 'N/A';
+
+        if (referralCodeElement) {
+            referralCodeElement.textContent = userData.referral_code || 'N/A';
+        }
+
+        if (referrerNameElement) {
+            referrerNameElement.textContent = userData.referred_by_username || 'لا يوجد';
+        }
+
+        if (invitedCountElement) {
+            invitedCountElement.textContent = (userData.invited_count !== undefined ? userData.invited_count : 0).toString();
+        }
+
+        // تشغيل عدادات التنازلي والتحقق من الحالة
+        checkAndDisplayDailyGiftStatus(userData, user);
+        checkAndDisplayCounterStatus(userData, user);
+
+    } else {
+        console.warn("لم يتم العثور على بيانات المستخدم في Firestore.");
+        const accountNameElement = document.getElementById('account-name');
+        if (accountNameElement) accountNameElement.textContent = 'خطأ في جلب البيانات';
+    }
+}
+
 
 // ======================================================
-// 6. تهيئة التطبيق (Initialization)
+// 4.1 منطق تحويل النقاط (Transfer Points Logic)
+// ======================================================
+
+// دالة البحث عن المستخدم باستخدام الـ ID الرقمي (لتحويل النقاط)
+async function findUserByNumericIdForTransfer(numericId) {
+    if (isNaN(numericId) || numericId <= 0) {
+        displayMessage('❌ المعرّف المدخل غير صالح.', 'error');
+        return null;
+    }
+
+    try {
+        const usersRef = collection(db, "users");
+        const q = query(usersRef, where("numeric_user_id", "==", numericId));
+        const querySnapshot = await getDocs(q);
+
+        if (querySnapshot.empty) {
+            displayMessage('❌ لم يتم العثور على مستخدم بهذا المعرّف.', 'error');
+            return null;
+        }
+
+        const userDoc = querySnapshot.docs[0];
+        const userData = userDoc.data();
+        userData.uid = userDoc.id; // إضافة UID للمستلم
+
+        // التحقق من أن المستخدم ليس هو نفسه المرسل
+        const sender = auth.currentUser;
+        if (sender && sender.uid === userData.uid) {
+            displayMessage('❌ لا يمكنك التحويل لنفسك.', 'error');
+            return null;
+        }
+
+        displayMessage('✅ تم العثور على المستلم بنجاح.', 'success');
+        return userData;
+
+    } catch (error) {
+        console.error("خطأ في البحث عن المستلم:", error);
+        displayMessage('❌ فشلت عملية البحث.', 'error');
+        return null;
+    }
+}
+
+// دالة التحويل الآمنة للنقاط باستخدام Transaction
+async function executePointTransfer(senderUid, recipientUid, transferAmount) {
+    const senderDocRef = doc(db, "users", senderUid);
+    const recipientDocRef = doc(db, "users", recipientUid);
+    const totalDeduction = transferAmount + TRANSFER_FEE;
+
+    // يجب أن يكون المبلغ المحول أكبر من صفر وأن يكون المبلغ الإجمالي أكبر من أو يساوي العمولة
+    if (transferAmount <= 0) {
+        displayMessage('❌ يجب تحويل نقطة واحدة على الأقل.', 'error');
+        return false;
+    }
+
+    if (totalDeduction <= 0) {
+        displayMessage('❌ المبلغ الإجمالي (مع العمولة) يجب أن يكون موجباً.', 'error');
+        return false;
+    }
+
+
+    try {
+        await runTransaction(db, async(transaction) => {
+            const senderDoc = await transaction.get(senderDocRef);
+            const recipientDoc = await transaction.get(recipientDocRef);
+
+            // 1. تحقق من وجود وثيقتي المرسل والمستلم
+            if (!senderDoc.exists() || !recipientDoc.exists()) {
+                throw "Sender or Recipient document does not exist!";
+            }
+
+            const senderPoints = senderDoc.data().points || 0;
+            const recipientPoints = recipientDoc.data().points || 0;
+
+            // 2. التحقق من رصيد المرسل (الرصيد يجب أن يغطي المبلغ + العمولة)
+            if (senderPoints < totalDeduction) {
+                throw `رصيدك (${senderPoints.toLocaleString()}) غير كافٍ لإجراء التحويل. أنت تحتاج لـ ${totalDeduction.toLocaleString()} نقطة (يشمل العمولة ${TRANSFER_FEE.toLocaleString()} نقطة).`;
+            }
+
+            // 3. تنفيذ التحويل
+
+            // خصم النقاط المحولة + العمولة من المرسل
+            const newSenderPoints = senderPoints - totalDeduction;
+            transaction.update(senderDocRef, {
+                points: newSenderPoints,
+                // يمكنك إضافة سجل تحويل هنا إذا أردت
+            });
+
+            // إضافة النقاط المحولة فقط إلى المستلم
+            const newRecipientPoints = recipientPoints + transferAmount;
+            transaction.update(recipientDocRef, {
+                points: newRecipientPoints,
+                // يمكنك إضافة سجل تحويل هنا إذا أردت
+            });
+        });
+
+        displayMessage(`✅ تم التحويل بنجاح! تم إرسال ${transferAmount.toLocaleString()} نقطة، وخصم عمولة ${TRANSFER_FEE.toLocaleString()} نقطة.`, 'success');
+        return true;
+
+    } catch (error) {
+        console.error("خطأ في الترانزاكشن (تحويل النقاط):", error);
+        // عرض الخطأ للمستخدم إذا كان خطأ تحقق (مثل عدم كفاية الرصيد)
+        if (typeof error === 'string') {
+            displayMessage(`❌ فشل التحويل: ${error}`, 'error');
+        } else {
+            displayMessage('❌ فشلت عملية التحويل الآمنة. حاول مجدداً.', 'error');
+        }
+        return false;
+    }
+}
+
+
+// ======================================================
+// 5. منطق المتجر (Boosts Logic) 
+// ======================================================
+// منطق الشراء من المتجر
+async function handlePurchase(user, item) {
+    const userDocRef = doc(db, "users", user.uid);
+    let userData;
+
+    try {
+        const docSnap = await getDoc(userDocRef);
+        if (docSnap.exists()) {
+            userData = docSnap.data();
+        } else {
+            // استخدام أيقونة Font Awesome
+            displayMessage('<i class="fa-solid fa-circle-xmark ml-2"></i> خطأ: لم يتم العثور على بيانات المستخدم.', 'error');
+            return;
+        }
+
+        const currentPoints = userData.points || 0;
+
+        if (currentPoints < item.price) {
+            // استخدام أيقونة Font Awesome
+            displayMessage(`<i class="fa-solid fa-circle-xmark ml-2"></i> ليس لديك نقاط كافية. تحتاج ${item.price.toLocaleString('en-US')} نقطة.`, 'error');
+            return;
+        }
+
+        await updateDoc(userDocRef, {
+            points: increment(-item.price),
+            counter_quantity: increment(item.value),
+            purchase_history: arrayUnion({
+                item_id: item.id,
+                item_name: item.name,
+                price: item.price,
+                date: new Date().toISOString()
+            })
+        });
+
+        if (window.location.pathname.endsWith('boosts.html')) {
+            loadBoostsPageData(user);
+        }
+
+        // استخدام أيقونة Font Awesome
+        displayMessage(`<i class="fa-solid fa-circle-check ml-2"></i> تم شراء "${item.name}" بنجاح!`, 'success');
+        setTimeout(() => {
+            redirectTo('dashboard.html');
+        }, 2000);
+
+    } catch (error) {
+        console.error("خطأ في عملية الشراء:", error);
+        // استخدام أيقونة Font Awesome
+        displayMessage('<i class="fa-solid fa-circle-xmark ml-2"></i> فشلت عملية الشراء. حاول مجدداً.', 'error');
+    }
+}
+
+// دالة تحميل واجهة المتجر (مُعدَّلة لتطبيق Tailwind Dark Mode)
+async function loadBoostsPageData(user) {
+    const docRef = doc(db, "users", user.uid);
+    const docSnap = await getDoc(docRef);
+
+    const pointsElement = document.getElementById('current-user-points');
+    const listElement = document.getElementById('boosts-list');
+
+    if (!pointsElement || !listElement) return;
+
+    if (docSnap.exists()) {
+        const userData = docSnap.data();
+        const currentPoints = userData.points || 0;
+
+        // تحديث النقاط بلون ثانوي (Secondary Color)
+        pointsElement.textContent = currentPoints.toLocaleString('en-US');
+        pointsElement.classList.add('text-secondary');
+        listElement.innerHTML = '';
+
+        // افتراض أن BOOST_ITEMS متاح هنا
+        // يجب أن تكون مُعرَّفة إما كـ import أو في نفس الملف/مجال الرؤية
+        if (typeof BOOST_ITEMS === 'undefined') {
+            listElement.innerHTML = '<p class="text-red-400 p-4 bg-dark-bg/50 rounded-lg">خطأ: قائمة المنتجات (BOOST_ITEMS) غير مُعرَّفة.</p>';
+            return;
+        }
+
+
+        BOOST_ITEMS.forEach(item => {
+            const itemDiv = document.createElement('div');
+
+            // 1. فئات Tailwind لبطاقة المنتج
+            itemDiv.className = 'boost-item bg-dark-bg p-4 mb-3 rounded-lg border border-gray-700 flex justify-between items-center transition duration-200 hover:border-primary/50';
+
+            const canBuy = currentPoints >= item.price;
+
+            // 2. فئات Tailwind للأزرار (موحدة)
+            const baseButtonClasses = 'py-2 px-4 rounded-lg font-bold transition duration-200 text-sm flex items-center justify-center';
+            const enabledButtonClasses = `bg-amber-500 text-gray-900 hover:bg-amber-400 ${baseButtonClasses}`;
+            const disabledButtonClasses = `bg-gray-600 text-gray-300 cursor-not-allowed ${baseButtonClasses}`;
+
+            const buttonClass = canBuy ? enabledButtonClasses : disabledButtonClasses;
+            const buttonText = canBuy ? 'شراء الآن <i class="fa-solid fa-cart-shopping mr-1"></i>' : 'نقاط غير كافية <i class="fa-solid fa-ban mr-1"></i>';
+            const buttonAttributes = !canBuy ? 'disabled' : '';
+
+            itemDiv.innerHTML = `
+                <div class="boost-info flex flex-col items-start">
+                    <h4 class="text-lg font-semibold text-white mb-1">${item.name}</h4>
+                    <p class="text-gray-400 text-sm flex items-center">
+                        <i class="fa-solid fa-plus-circle ml-2 text-primary"></i>
+                        إضافة: <strong>+${item.value}</strong> للعداد
+                    </p>
+                </div>
+                <div class="boost-action flex flex-col items-end space-y-2">
+                    <p class="price-tag text-xl font-bold text-red-400">${item.price.toLocaleString('en-US')} نقطة</p>
+                    <button id="${item.id}" class="${buttonClass}" ${buttonAttributes}>
+                        ${buttonText}
+                    </button>
+                </div>
+            `;
+            listElement.appendChild(itemDiv);
+
+            if (canBuy) {
+                document.getElementById(item.id).addEventListener('click', () => handlePurchase(user, item));
+            }
+        });
+
+    } else {
+        // رسالة خطأ مُعدَّلة للنمط الداكن
+        listElement.innerHTML = '<p class="text-red-400 p-4 bg-dark-bg/50 rounded-lg"><i class="fa-solid fa-circle-xmark ml-2"></i> خطأ في جلب بيانات النقاط.</p>';
+    }
+}
+
+// ======================================================
+// 6. منطق الأحكام والسياسات (Modal Logic) 
+// ======================================================
+
+function setupTermsModal() {
+    const termsBtn = document.getElementById('terms-btn');
+    const modal = document.getElementById('terms-modal');
+    const closeBtn = document.querySelector('.close-btn');
+    const termsTextContainer = document.getElementById('terms-text');
+
+    const rules = [{
+            text: "**1. شراء النقاط:** ممنوع شراء النقاط من غير الوكلاء المدرجة أسماؤهم في البوت، والمخالفة تؤدي إلى **حظر الطرفين**.",
+            icon: '🛑',
+            type: 'bad'
+        },
+        {
+            text: "**2. استلام النقاط:** يمنع استلام كميات كبيرة أو غير اعتيادية من حسابات وهمية أو حقيقية، وستؤدي المخالفة إلى **حظر الطرفين**.",
+            icon: '🛑',
+            type: 'bad'
+        },
+        {
+            text: "**3. التحايل والانتحال:** أي محاولة للتحايل على الوكلاء أو قسم الدعم أو الانتحال كأحد أفراد الإدارة تؤدي إلى **الحظر الدائم**.",
+            icon: '⛔️',
+            type: 'bad'
+        },
+        {
+            text: "**4. التعامل مع القروض:** إرسال أو استلام النقاط من أصحاب القروض يؤدي إلى **إنذارات وحظر أسبوعي**.",
+            icon: '⚠️',
+            type: 'bad'
+        },
+        {
+            text: "**5. المطورين والمشاريع الأخرى:** ممنوع استثمار أي دعم أو مشاريع لمطورين آخرين داخل البوت بأي شكل كان.",
+            icon: '🚫',
+            type: 'bad'
+        },
+        {
+            text: "**6. التسقيط والإساءة:** أي محاولة تسقيط أو تشويه سمعة المستخدمين أو الإدارة تُعاقب بـ **الحظر الشهري أو السنوي**.",
+            icon: '🚷',
+            type: 'bad'
+        },
+        {
+            text: "**7. مسؤولية الحساب والأرباح:** المتجر غير مسؤول عن أي مشاكل تتعلق بحسابك في تيليجرام، وأرباح المتجر قابلة للصعود والنزول حسب طبيعة الاستثمار.",
+            icon: '✅',
+            type: 'good'
+        },
+        {
+            text: "**8. فترة السحب القصوى:** في حال لم يقم المستخدم بالسحب خلال مدة أقصاها **45 يوم**، يتم حظر الحساب بشكل تلقائي.",
+            icon: '⏰',
+            type: 'bad'
+        }
+    ];
+
+    if (termsTextContainer) {
+        termsTextContainer.innerHTML = rules.map(rule => `
+            <div class="rule-item rule-item-${rule.type}">
+                <span class="rule-icon">${rule.icon}</span>
+                <span class="rule-text">${rule.text}</span>
+            </div>
+        `).join('');
+    }
+
+    if (termsBtn && modal) {
+        termsBtn.addEventListener('click', () => {
+            modal.style.display = "block";
+        });
+    }
+
+    if (closeBtn && modal) {
+        closeBtn.addEventListener('click', () => {
+            modal.style.display = "none";
+        });
+    }
+
+    window.addEventListener('click', (event) => {
+        if (event.target === modal) {
+            modal.style.display = "none";
+        }
+    });
+}
+
+
+// ======================================================
+// 7. ربط الدوال وإدارة حالة الصفحات (Main Execution)
 // ======================================================
 
 document.addEventListener('DOMContentLoaded', async() => {
-    const configLoaded = await loadConfig();
-    if (!configLoaded) {
-        displayMessage('❌ فشل في تحميل التهيئة الأساسية. لا يمكن تشغيل التطبيق.', 'error');
-        return;
+    // تحميل التهيئة من info.json أولاً
+    const ok = await loadConfig();
+    if (!ok) {
+        console.error("Failed to load config. Aborting initialization.");
+        // نستمر لكن بدون firebase لن تعمل وظائف المصادقة/قاعدة البيانات
     }
 
-    // تهيئة Firebase
-    app = initializeApp(firebaseConfig);
-    auth = getAuth(app);
-    db = getFirestore(app);
+    // تهيئة Firebase الآن بعد تحميل firebaseConfig
+    if (firebaseConfig) {
+        app = initializeApp(firebaseConfig);
+        auth = getAuth(app);
+        db = getFirestore(app);
+    } else {
+        console.error("firebaseConfig is missing; Firebase not initialized.");
+    }
 
     // ربط نماذج التسجيل والدخول العادية
     const registerForm = document.getElementById('registerForm');
@@ -751,95 +1152,124 @@ document.addEventListener('DOMContentLoaded', async() => {
     const loginForm = document.getElementById('loginForm');
     if (loginForm) loginForm.addEventListener('submit', handleLogin);
 
-    // ربط زر تسجيل الخروج (يجب أن يكون موجوداً في كل الصفحات الداخلية)
+    // **ربط نموذج دخول المطور**
+    const adminLoginForm = document.getElementById('adminLoginForm');
+    if (adminLoginForm) adminLoginForm.addEventListener('submit', handleAdminLogin);
+
+    // ربط زر الخروج (للمستخدم العادي والمطور)
     const logoutBtn = document.getElementById('logout-btn');
-    if (logoutBtn) logoutBtn.addEventListener('click', handleLogout);
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', async() => {
+            const isUserAdmin = isAuthenticatedAdmin();
 
-    // إدارة حالة المصادقة وتوجيه المستخدمين
-    if (auth) {
-        onAuthStateChanged(auth, (user) => {
-            const path = window.location.pathname;
-
-            // 1. إدارة الوصول لصفحات المطور
-            if (path.endsWith('admin.html')) {
-                if (isAuthenticatedAdmin()) {
-                    // تحقق إضافي في حالة وجود مشكلة في Session Storage
-                    if (user && user.uid === ADMIN_UID) {
-                        setupAdminPanel(); // تهيئة لوحة المطور
-                    } else {
-                        // إذا لم يكن UID هو UID المطور، أعد التوجيه
-                        displayMessage('❌ غير مصرح لك بالدخول إلى لوحة المطور.', 'error');
-                        redirectTo('index.html');
-                    }
-                } else {
-                    // إذا لم يكن مصادقاً كـ مطور، أعد التوجيه
-                    displayMessage('❌ غير مصرح لك بالدخول إلى لوحة المطور.', 'error');
-                    redirectTo('index.html');
-                }
-                return; // إيقاف التنفيذ هنا لصفحة المطور
+            if (isUserAdmin) {
+                sessionStorage.removeItem(DEV_TOKEN_KEY);
+                displayMessage('تم تسجيل خروج المطور بنجاح.', 'success');
+                redirectTo('admin-login.html');
+                return;
             }
 
+            try {
+                await signOut(auth);
+                displayMessage('تم تسجيل الخروج بنجاح.', 'success');
+                redirectTo('index.html');
+            } catch (error) {
+                console.error("خطأ في تسجيل الخروج:", error);
+                displayMessage('فشل تسجيل الخروج.', 'error');
+            }
+        });
+    }
 
-            // 2. إدارة الوصول لصفحات المستخدمين (Dashboard, Boosts)
+    // **إدارة الصفحات الداخلية**
+    const path = window.location.pathname;
+
+    // تهيئة لوحة تحكم المطور
+    if (path.endsWith('admin.html')) {
+        setupAdminPanel();
+    } else if (path.endsWith('dashboard.html') || path.endsWith('boosts.html') || path.endsWith('withdraw.html')) {
+        // منطق الصفحات العادية (الداشبورد، المتجر، السحب)
+        onAuthStateChanged(auth, (user) => {
             if (user) {
-                // المستخدم مسجل الدخول
-                document.getElementById('auth-links')?.classList.add('hidden');
-                document.getElementById('user-links')?.classList.remove('hidden');
-
-                if (path.endsWith('index.html') || path.endsWith('login.html') || path.endsWith('register.html')) {
-                    redirectTo('dashboard.html');
-                } else if (path.endsWith('dashboard.html')) {
+                // تحميل بيانات الصفحة المناسبة
+                if (path.endsWith('dashboard.html')) {
                     loadDashboardData(user);
-                    
-                    const claimButton = document.getElementById('claim-daily-btn');
-                    if (claimButton) claimButton.addEventListener('click', () => claimDailyPoints(user));
-                    
-                    const copyBtn = document.getElementById('copy-referral-btn');
-                    if (copyBtn) copyBtn.addEventListener('click', copyReferralCode);
-                    
-                    // منطق Modal التحويل (يبقى كما هو)
-                    const openTransferModalBtn = document.getElementById('open-transfer-modal');
-                    const transferModal = document.getElementById('transfer-modal');
-                    const closeTransferModalBtn = document.getElementById('close-transfer-modal');
-                    const transferForm = document.getElementById('transferForm');
-                    const recipientInput = document.getElementById('recipient-uid');
-                    const amountInput = document.getElementById('transfer-amount');
 
-                    if (openTransferModalBtn) {
-                        openTransferModalBtn.addEventListener('click', () => {
+                    // منطق تحويل النقاط للـ Dashboard
+                    const transferBtn = document.getElementById('transfer-points-btn');
+                    const transferModal = document.getElementById('transfer-modal');
+                    const closeTransferBtn = document.querySelector('.close-transfer-btn');
+                    const searchRecipientBtn = document.getElementById('search-recipient-btn');
+                    const transferForm = document.getElementById('transfer-form');
+
+                    let recipientUserData = null; // لحفظ بيانات المستلم بعد البحث
+
+                    if (transferBtn && transferModal) {
+                        // فتح الـ Modal
+                        transferBtn.addEventListener('click', (e) => {
+                            e.preventDefault();
                             transferModal.classList.remove('hidden');
                             transferModal.classList.add('flex');
+                            // إعادة تعيين الواجهة عند الفتح
+                            document.getElementById('recipient-details').classList.add('hidden');
+                            document.getElementById('transfer-amount-group').style.display = 'none';
+                            document.getElementById('final-transfer-btn').style.display = 'none';
+                            document.getElementById('recipient-id').value = '';
+                            document.getElementById('transfer-amount').value = '';
+                            recipientUserData = null;
                         });
-                    }
 
-                    if (closeTransferModalBtn) {
-                        closeTransferModalBtn.addEventListener('click', () => {
+                        // إغلاق الـ Modal
+                        closeTransferBtn.addEventListener('click', () => {
                             transferModal.classList.add('hidden');
                             transferModal.classList.remove('flex');
-                            transferForm.reset();
                         });
-                    }
-
-                    if (transferModal) {
                         transferModal.addEventListener('click', (e) => {
                             if (e.target === transferModal) {
                                 transferModal.classList.add('hidden');
                                 transferModal.classList.remove('flex');
-                                transferForm.reset();
                             }
                         });
-                    }
 
-                    if (transferForm) {
-                        // ** 🛑🛑🛑 هذا هو الجزء الذي تم إصلاحه لضمان تمرير UID المستلم 🛑🛑🛑 **
+                        // منطق البحث عن المستلم
+                        searchRecipientBtn.addEventListener('click', async() => {
+                            const recipientId = parseInt(document.getElementById('recipient-id').value, 10);
+
+                            if (isNaN(recipientId)) {
+                                displayMessage('❌ الرجاء إدخال ID رقمي صالح.', 'error');
+                                return;
+                            }
+
+                            // لا يمكن التحويل لنفسه، يتم التحقق داخل الدالة
+                            recipientUserData = await findUserByNumericIdForTransfer(recipientId);
+
+                            const detailsDiv = document.getElementById('recipient-details');
+                            const amountGroup = document.getElementById('transfer-amount-group');
+                            const finalBtn = document.getElementById('final-transfer-btn');
+
+                            if (recipientUserData) {
+                                // عرض التفاصيل وتفعيل حقل المبلغ
+                                document.getElementById('recipient-name-display').textContent = recipientUserData.username || 'N/A';
+                                document.getElementById('recipient-points-display').textContent = (recipientUserData.points || 0).toLocaleString();
+                                document.getElementById('recipient-referral-code-display').textContent = recipientUserData.referral_code || 'N/A';
+
+                                detailsDiv.classList.remove('hidden');
+                                amountGroup.style.display = 'block';
+                                finalBtn.style.display = 'block';
+                            } else {
+                                // إخفاء في حال الفشل
+                                detailsDiv.classList.add('hidden');
+                                amountGroup.style.display = 'none';
+                                finalBtn.style.display = 'none';
+                            }
+                        });
+
+                        // منطق تنفيذ التحويل النهائي
                         transferForm.addEventListener('submit', async(e) => {
                             e.preventDefault();
+                            const transferAmount = parseInt(document.getElementById('transfer-amount').value, 10);
 
-                            const recipientId = recipientInput.value.trim();
-                            const transferAmount = parseInt(amountInput.value.trim());
-
-                            if (!recipientId || !transferAmount) {
-                                displayMessage('❌ خطأ: لم يتم تحديد المستلم أو المبلغ.', 'error');
+                            if (!recipientUserData || !auth.currentUser) {
+                                displayMessage('❌ خطأ: لم يتم تحديد المرسل أو المستلم.', 'error');
                                 return;
                             }
 
@@ -848,54 +1278,26 @@ document.addEventListener('DOMContentLoaded', async() => {
                                 return;
                             }
 
-                            let finalRecipientUid = recipientId; // الافتراض الأولي هو أن المُدخل هو UID
-
-                            // إذا كان المُدخل بريداً إلكترونياً، ابحث عن UID
-                            if (recipientId.includes('@')) {
-                                const q = query(collection(db, "users"), where("email", "==", recipientId));
-                                const snapshot = await getDocs(q);
-                                if (snapshot.empty) {
-                                    displayMessage('❌ لم يتم العثور على مستخدم بالبريد الإلكتروني المُدخل.', 'error');
-                                    return;
-                                }
-                                finalRecipientUid = snapshot.docs[0].id; // حفظ الـ UID الفعلي
-                            } else {
-                                // إذا كان المُدخل UID، تأكد من وجود المستخدم
-                                const docSnap = await getDoc(doc(db, "users", recipientId));
-                                if (!docSnap.exists()) {
-                                    displayMessage('❌ لم يتم العثور على مستخدم بالـ UID المُدخل.', 'error');
-                                    return;
-                                }
-                            }
-
                             const senderUid = auth.currentUser.uid;
+                            const recipientUid = recipientUserData.uid;
 
-                            // ** تمرير الـ UID الفعلي المُستخلص (finalRecipientUid) **
-                            const success = await executePointTransfer(senderUid, finalRecipientUid, transferAmount);
+                            // يجب أن يكون الرصيد كافياً للمبلغ + العمولة (يتم التحقق داخل executePointTransfer)
+                            const success = await executePointTransfer(senderUid, recipientUid, transferAmount);
 
                             if (success) {
                                 transferModal.classList.add('hidden');
                                 transferModal.classList.remove('flex');
-                                transferForm.reset();
                                 // إعادة تحميل بيانات لوحة التحكم بعد نجاح التحويل لعرض الرصيد الجديد
                                 loadDashboardData(auth.currentUser, true);
                             }
                         });
-                        // ** 🛑🛑🛑 نهاية الجزء الذي تم إصلاحه 🛑🛑🛑 **
                     }
-
 
                 } else if (path.endsWith('boosts.html')) {
                     loadBoostsPageData(user);
                 }
             } else {
-                // المستخدم غير مسجل الدخول
-                document.getElementById('auth-links')?.classList.remove('hidden');
-                document.getElementById('user-links')?.classList.add('hidden');
-
-                if (path.endsWith('dashboard.html') || path.endsWith('boosts.html')) {
-                    redirectTo('index.html');
-                }
+                redirectTo('index.html');
             }
         });
     }
