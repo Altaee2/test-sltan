@@ -1,0 +1,140 @@
+/* Reset and Global Styles */
+
+body {
+    font-family: 'Arial', sans-serif;
+    background-color: #e9ecef;
+    /* لون خلفية خفيف */
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    direction: rtl;
+    /* دعم اللغة العربية */
+    text-align: right;
+}
+
+.container {
+    background-color: #ffffff;
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+    width: 90%;
+    max-width: 400px;
+    /* حجم معقول على سطح المكتب */
+    transition: all 0.3s ease-in-out;
+}
+
+
+/* Header */
+
+h2 {
+    color: #007bff;
+    text-align: center;
+    margin-bottom: 25px;
+    font-size: 1.8em;
+    border-bottom: 2px solid #f0f0f0;
+    padding-bottom: 10px;
+}
+
+
+/* Input Group Styles */
+
+.input-group {
+    margin-bottom: 20px;
+}
+
+.input-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: #495057;
+    font-weight: bold;
+    font-size: 0.95em;
+}
+
+.input-group input {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ced4da;
+    border-radius: 8px;
+    box-sizing: border-box;
+    font-size: 1em;
+    transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.input-group input:focus {
+    border-color: #007bff;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+}
+
+
+/* Button Styles */
+
+button[type="submit"] {
+    width: 100%;
+    padding: 12px;
+    background-color: #a72828;
+    /* لون أخضر جذاب */
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.1em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.3s, transform 0.1s;
+    box-shadow: 0 4px 10px rgba(40, 167, 69, 0.3);
+}
+
+button[type="submit"]:hover {
+    background-color: #218838;
+    transform: translateY(-1px);
+}
+
+
+/* Switch Form Link */
+
+.switch-form {
+    text-align: center;
+    margin-top: 20px;
+    color: #6c757d;
+}
+
+.switch-form a {
+    color: #007bff;
+    text-decoration: none;
+    font-weight: bold;
+    transition: color 0.3s;
+}
+
+.switch-form a:hover {
+    color: #0056b3;
+}
+
+
+/* Message Display */
+
+.message {
+    padding: 10px;
+    margin-top: 15px;
+    border-radius: 8px;
+    text-align: center;
+    font-size: 0.9em;
+    font-weight: bold;
+    display: none;
+    /* يتم إظهاره عبر JavaScript */
+}
+
+
+/* Responsive adjustments */
+
+@media (max-width: 600px) {
+    .container {
+        margin: 10px;
+        padding: 20px;
+    }
+    h2 {
+        font-size: 1.6em;
+    }
+}

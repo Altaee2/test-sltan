@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+   <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>توبكاش مضاعفة العدادت</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    
+    <link rel="icon" type="image/jpeg" href="top.jpg">
+
+    <meta property="og:title" content="متجر توب كاش الاستثماري">
+    <meta property="og:description" content="اهلا بك في عالم الاستثمار الذكي مع توبكاش , استرجع رأس المال خلال 5 أشهر فقط , مدة الاستثمار سنتين , اغتنم الفرصة وكن جزءاً من نجاحنا ">
+    <meta property="og:image" content="top.jpg">
+    <meta property="og:url" content="www.top-cash.wuaze.com/boosts.html">
+    <meta property="og:type" content="website">
+
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="متجر توب كاش الاستثماري">
+    <meta name="twitter:description" content="اهلا بك في عالم الاستثمار الذكي مع توبكاش , استرجع رأس المال خلال 5 أشهر فقط , مدة الاستثمار سنتين , اغتنم الفرصة وكن جزءاً من نجاحنا ">
+    <meta name="twitter:image" content="www.top-cash.wuaze.com/top.jpg">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'Ariel', 'sans-serif'],
+                    },
+                    colors: {
+                        'primary': '#059669', // Emerald 600
+                        'secondary': '#10b981', // Emerald 500
+                        'accent': '#34d399', // Emerald 400
+                        'dark-bg': '#1f2937', // Gray 800 (خلفية البطاقات والقوائم)
+                        'app-bg': '#111827', // Gray 900 (خلفية الصفحة)
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* التنسيقات الأساسية للنمط الداكن */
+        
+        body {
+            background-color: #111827;
+            /* app-bg */
+            font-family: 'Inter', sans-serif;
+        }
+        /* تنسيق الأزرار المعطلة */
+        
+        .buy-btn:disabled {
+            background-color: #4b5563;
+            /* Gray 600 */
+            cursor: not-allowed;
+            color: #d1d5db;
+        }
+        /* تنسيق رسالة النظام (يجب أن تكون موحدة مع displayMessage في script.js) */
+        
+        .message.success {
+            background-color: #065f46;
+            /* Dark Green */
+            color: #d1fae5;
+            /* Light Green */
+            border: 1px solid #10b981;
+        }
+        
+        .message.error {
+            background-color: #7f1d1d;
+            /* Dark Red */
+            color: #fee2e2;
+            /* Light Red */
+            border: 1px solid #ef4444;
+        }
+    </style>
+</head>
+
+<body class="text-gray-300 min-h-screen">
+    <div class="container mx-auto p-4 sm:p-6 lg:p-8">
+        <header class="flex justify-between items-center p-4 rounded-lg mb-6 border-b border-gray-700">
+            <h1 class="text-2xl font-bold text-primary flex items-center">
+                <i class="fa-solid fa-rocket ml-3"></i> متجر مضاعفة العدادات
+            </h1>
+            <a href="dashboard.html" class="text-sm text-gray-400 hover:text-primary transition duration-200 font-medium">
+                <i class="fa-solid fa-arrow-right-to-bracket transform rotate-180 ml-1"></i> العودة للوحة التحكم
+            </a>
+        </header>
+
+        <p class="text-center text-lg font-bold my-6 p-4 bg-dark-bg/50 rounded-lg border border-primary/50 shadow-md">
+            نقاطك الحالية: <span id="current-user-points" class="text-secondary">جاري التحميل...</span> نقطة
+        </p>
+
+        <div id="boosts-list" class="space-y-4">
+        </div>
+
+        <p id="message" class="message p-3 rounded mt-6 text-center hidden"></p>
+    </div>
+
+    <script type="module" src="script.js"></script>
+</body>
+
+
+</html>

@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>توبكاش_ صفحة المستخدم</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    
+    <link rel="icon" type="image/jpeg" href="top.jpg">
+
+    <meta property="og:title" content="متجر توب كاش الاستثماري">
+    <meta property="og:description" content="اهلا بك في عالم الاستثمار الذكي مع توبكاش , استرجع رأس المال خلال 5 أشهر فقط , مدة الاستثمار سنتين , اغتنم الفرصة وكن جزءاً من نجاحنا ">
+    <meta property="og:image" content="top.jpg">
+    <meta property="og:url" content="www.top-cash.wuaze.com/dashboard.html">
+    <meta property="og:type" content="website">
+
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="متجر توب كاش الاستثماري">
+    <meta name="twitter:description" content="اهلا بك في عالم الاستثمار الذكي مع توبكاش , استرجع رأس المال خلال 5 أشهر فقط , مدة الاستثمار سنتين , اغتنم الفرصة وكن جزءاً من نجاحنا ">
+    <meta name="twitter:image" content="www.top-cash.wuaze.com/top.jpg">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'Ariel', 'sans-serif'],
+                    },
+                    colors: {
+                        'primary': '#059669', // Emerald 600
+                        'secondary': '#10b981', // Emerald 500
+                        'accent': '#34d399', // Emerald 400
+                        'dark-bg': '#1f2937', // Gray 800
+                        'light-bg': '#f3f4f6', // Gray 100
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            /* خلفية داكنة جداً للجسم */
+            font-family: 'Inter', sans-serif;
+            background-color: #111827;
+            /* Gray 900 */
+            color: #f3f4f6;
+            /* نص فاتح */
+        }
+        
+        .card {
+            /* خلفية داكنة للبطاقات (أفتح قليلاً من الخلفية العامة) */
+            background-color: #1f2937;
+            /* Gray 800 */
+            border-radius: 1rem;
+            /* ظل معدل للخلفية الداكنة */
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+        
+        #logout-btn {
+            transition: background-color 0.3s;
+        }
+        
+        #logout-btn:hover {
+            background-color: #ef4444;
+            /* Red 500 */
+        }
+        
+        .copy-btn {
+            transition: opacity 0.3s, background-color 0.3s;
+        }
+        
+        .copy-btn:hover {
+            background-color: #3b82f6;
+            /* Blue 500 */
+            opacity: 0.9;
+        }
+        /* تعديلات على حقول الإدخال لتناسب الوضع الداكن */
+        
+        input:not(#search-recipient-btn, #final-transfer-btn) {
+            background-color: #374151 !important;
+            /* Gray 700 for input field */
+            color: #ffffff !important;
+            border-color: #4b5563 !important;
+            /* Gray 600 for border */
+        }
+    </style>
+</head>
+
+<body class="min-h-screen flex flex-col items-center p-4 sm:p-8 text-gray-100">
+
+    <div id="message" class="fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg text-sm hidden w-full max-w-sm text-right" role="alert">
+    </div>
+
+    <div class="w-full max-w-4xl text-center mb-6">
+        <img src="top.jpg" alt="شعار المتجر" class="mx-auto h-28 w-28 rounded-full object-cover shadow-xl border-4 border-primary/50 mb-3">
+        <h1 class="text-5xl font-extrabold text-white tracking-wide">متجر توب كاش</h1>
+    </div>
+
+    <header class="w-full max-w-4xl flex justify-end items-center mb-8">
+        <button id="logout-btn" class="bg-red-600 text-white font-semibold py-2 px-4 rounded-full shadow-md hover:bg-red-700 transition duration-300">
+            خروج
+        </button>
+    </header>
+
+    <section class="w-full max-w-4xl mb-8 card p-6 md:p-8">
+        <h2 class="text-2xl font-bold mb-4 text-white">مرحباً بك، <span id="account-name" class="text-primary">تحميل...</span></h2>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+
+            <div class="bg-primary/30 p-4 rounded-lg flex flex-col justify-center items-center">
+                <p class="text-lg text-primary font-semibold mb-1">النقاط الحالية</p>
+                <p id="points-count" class="text-4xl font-extrabold text-primary">0</p>
+            </div>
+            <div class="bg-blue-900/30 p-4 rounded-lg flex flex-col justify-center items-center">
+                <p class="text-lg text-blue-400 font-semibold mb-1">كمية العداد</p>
+                <p id="counter-quantity" class="text-4xl font-extrabold text-blue-400">0</p>
+            </div>
+            <div class="bg-gray-700 p-4 rounded-lg flex flex-col justify-center items-center text-center">
+                <p class="text-lg text-gray-300 font-semibold mb-1">معرّف المستخدم (ID)</p>
+                <p id="numeric-user-id" class="text-xl font-bold text-white truncate w-full">N/A</p>
+                <p class="text-xs text-gray-400 mt-1">هذا هو مُعرفك الخاص.</p>
+            </div>
+        </div>
+
+        <div class="w-full mt-8">
+            <div class="card p-6 bg-gray-900 border border-gray-700 shadow-2xl">
+                <h3 class="text-2xl font-extrabold text-white mb-4 border-b border-gray-700 pb-3 text-center">روابط التواصل والأخبار 🔗</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+                    <a href="https://t.me/topcash2005" target="_blank" class="w-full bg-indigo-700 text-white p-4 rounded-xl font-bold text-center shadow-lg hover:bg-indigo-600 transition duration-200 flex items-center justify-center space-x-2 space-x-reverse transform hover:scale-[1.02]">
+                        <i class="fa-brands fa-telegram text-2xl"></i>
+                        <span>قناة البوت</span>
+                    </a>
+                      <a href="https://t.me/Topcash121" target="_blank" class="w-full bg-indigo-700 text-white p-4 rounded-xl font-bold text-center shadow-lg hover:bg-indigo-600 transition duration-200 flex items-center justify-center space-x-2 space-x-reverse transform hover:scale-[1.02]">
+                        <i class="fa-brands fa-telegram text-2xl"></i>
+                        <span>الدعم الفني</span>
+                    </a>
+
+                    <a href="https://t.me/Topcash124" target="_blank" class="w-full bg-green-700 text-white p-4 rounded-xl font-bold text-center shadow-lg hover:bg-green-600 transition duration-200 flex items-center justify-center space-x-2 space-x-reverse transform hover:scale-[1.02]">
+                        <i class="fa-solid fa-receipt text-2xl"></i>
+                        <span>اثباتات السحب</span>
+                    </a>
+
+                </div>
+            </div>
+        </div>
+        <div class="border-t border-gray-700 pt-4 space-y-4 mt-6">
+            <h3 class="text-xl font-bold text-white">نظام الإحالة والمكافآت</h3>
+
+            <div class="bg-yellow-900/30 p-3 rounded-lg flex items-center justify-between">
+                <p class="font-medium text-gray-100 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-2 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-6-4a2 2 0 11-4 0 2 2 0 014 0zm-2 5a2 2 0 00-2 2v2h4v-2a2 2 0 00-2-2z" clip-rule="evenodd" />
+                    </svg> من قام بدعوتك:
+                </p>
+                <span id="referrer-name" class="font-bold text-yellow-200">لا يوجد / تحميل...</span>
+            </div>
+
+            <div class="bg-primary/30 p-3 rounded-lg flex items-center justify-between">
+                <p class="font-medium text-gray-100 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-2 text-primary" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M11 3a1 1 0 100 2h3a1 1 0 100-2h-3z" />
+                        <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 3.683c.092.463-.205.903-.675.903H4.767A.75.75 0 004 7.625v10a.75.75 0 00.767.75h10.466a.75.75 0 00.767-.75v-2.11a1 1 0 01.986-.836l.74-3.683c.092-.463-.205-.903-.675-.903H15v1.167a.75.75 0 001.5 0V7.5a.75.75 0 00-1.5 0v.5H4.5A1.5 1.5 0 003 9v7.5A1.5 1.5 0 004.5 18h11A1.5 1.5 0 0017 16.5v-7A1.5 1.5 0 0015.5 8H14a1 1 0 01-.986-.836l-.74-3.683A1 1 0 0011.153 2H8.847a1 1 0 00-.986.836l-.74 3.683A1 1 0 016.847 8H6a1 1 0 01-1-1V5a1 1 0 00-2 0v2z" />
+                    </svg> كود الإحالة الخاص بك:
+                </p>
+                <div class="flex items-center space-x-2 space-x-reverse">
+                    <span id="referral-code" class="font-extrabold text-primary bg-primary/20 px-3 py-1 rounded-md text-lg">تحميل...</span>
+                    <button id="copy-referral-btn" class="copy-btn bg-primary text-white p-2 rounded-full text-xs">
+        نسخ
+    </button>
+                </div>
+            </div>
+
+            <div class="bg-blue-900/30 p-3 rounded-lg flex items-center justify-between">
+                <p class="font-medium text-gray-100 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-2 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18H4v-1a4 4 0 011-3.46V12h3v1.17A4.25 4.25 0 0010 17h6v1z" />
+                    </svg> إجمالي المدعوين:
+                </p>
+                <span id="invited-count" class="font-extrabold text-blue-200 text-2xl">0</span>
+            </div>
+        </div>
+    </section>
+
+    <div class="w-full max-w-4xl grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+
+        <div class="card p-6 flex flex-col justify-between items-center text-center bg-green-900/30">
+            <h3 class="text-xl font-bold text-white mb-4">الهدية اليومية</h3>
+            <p id="gift-text" class="text-lg font-medium text-gray-300 mb-4">جاري التحقق...</p>
+            <button id="daily-gift-btn" class="w-full bg-primary text-white font-bold py-3 px-4 rounded-full shadow-lg disabled:bg-primary/50 disabled:cursor-not-allowed transition duration-300">
+                <span id="countdown-timer">اضغط للحصول عليها</span>
+            </button>
+        </div>
+
+        <div class="card p-6 flex flex-col justify-between items-center text-center bg-yellow-900/30">
+            <h3 class="text-xl font-bold text-white mb-4">زيادة العداد اليدوية ⚡</h3>
+            <p class="text-lg font-medium text-gray-300 mb-4">
+                يمكنك زيادة العداد يدويًا مرة كل 24 ساعة.
+            </p>
+
+            <div id="manual-counter-section" class="w-full">
+                <button id="manual-counter-btn" class="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 px-4 rounded-full shadow-lg transition duration-300 flex items-center justify-center space-x-2 space-x-reverse hidden">
+            <i class="fa-solid fa-bolt text-white text-lg ml-2"></i>
+            <span>زيادة العداد الآن</span>
+        </button>
+
+                <div id="counter-timer" class="text-2xl font-extrabold text-yellow-400 p-2 bg-yellow-700/30 rounded-lg w-full text-center">
+                    جاري التحقق...
+                </div>
+            </div>
+        </div>
+
+
+        <div id="open-store-modal-btn" class="card p-6 flex flex-col justify-between items-center text-center bg-purple-900/30 hover:shadow-xl transform hover:scale-[1.02] transition duration-300 cursor-pointer">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-purple-400 mb-3" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M3 1a1 1 0 000 2h1a2 2 0 012 2v2a2 2 0 01-2 2H3a1 1 0 000 2h12a1 1 0 100-2h-1a2 2 0 01-2-2V5a2 2 0 012-2h1a1 1 0 100-2H3z" />
+            </svg>
+            <h3 class="text-2xl font-extrabold text-purple-200 mb-4">المتجر</h3>
+            <p class="text-base font-medium text-gray-300 mb-4">خدمات تلغرام، شدات ببجي، والمزيد!</p>
+            <div class="w-full">
+                <span class="inline-block bg-purple-600 text-white font-bold py-3 px-6 rounded-full shadow-lg hover:bg-purple-700">
+                    استعراض المنتجات
+                </span>
+            </div>
+        </div>
+
+      
+    </div>
+
+    <h3 class="text-xl font-bold text-white mb-4 w-full max-w-4xl text-right">ميزات إضافية</h3>
+    <div class="w-full max-w-4xl grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+
+        <a href="boosts.html" class="card p-4 flex flex-col items-center justify-center text-center bg-red-900/30 hover:shadow-xl hover:bg-red-900/40 transition duration-300">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-red-400 mb-2" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M10 2a5 5 0 00-5 5v2a2 2 0 00-2 2v5a2 2 0 002 2h10a2 2 0 002-2v-5a2 2 0 00-2-2V7a5 5 0 00-5-5zm-5 7v2h10V9a3 3 0 01-6 0h-4z" />
+            </svg>
+            <span class="text-lg font-bold text-red-200">مضاعفة العدادات</span>
+        </a>
+
+        <a href="agents.html" class="card p-4 flex flex-col items-center justify-center text-center bg-indigo-900/30 hover:shadow-xl hover:bg-indigo-900/40 transition duration-300">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-indigo-400 mb-2" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM10 9a2 2 0 100-4 2 2 0 000 4z" />
+                <path fill-rule="evenodd" d="M14 17.76a7.5 7.5 0 00-8 0v-2.26a2 2 0 012-2h4a2 2 0 012 2v2.26z" clip-rule="evenodd" />
+            </svg>
+            <span class="text-lg font-bold text-indigo-200">الوكلاء المعتمدون</span>
+        </a>
+
+        <a href="guarantees.html" class="card p-4 flex flex-col items-center justify-center text-center bg-teal-900/30 hover:shadow-xl hover:bg-teal-900/40 transition duration-300">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-teal-400 mb-2" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+            </svg>
+            <span class="text-lg font-bold text-teal-200">سياسة الضمانات</span>
+        </a>
+
+    </div>
+
+    <div class="w-full max-w-4xl flex justify-center mt-4 space-x-4 space-x-reverse">
+        <a href="withdraw.html" class="text-primary hover:underline font-semibold transition duration-300">
+            <span class="bg-gray-700/70 backdrop-blur-sm p-2 rounded-lg shadow-md text-white">سحب الأرباح</span>
+        </a>
+        <button id="terms-btn" class="text-gray-300 hover:underline font-semibold transition duration-300">
+            <span class="bg-gray-700/70 backdrop-blur-sm p-2 rounded-lg shadow-md">الأحكام والقوانين</span>
+        </button>
+    </div>
+
+    <div id="terms-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 z-50 flex justify-center items-center p-4">
+        <div class="card bg-gray-800 text-white rounded-xl p-6 w-full max-w-xl max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center border-b border-gray-700 pb-3 mb-4">
+                <h3 class="text-2xl font-bold text-white">الأحكام والقوانين</h3>
+                <button class="close-btn text-gray-400 hover:text-white text-3xl font-semibold">
+                    &times;
+                </button>
+            </div>
+            <div id="terms-text" class="text-gray-300 space-y-4 text-base">
+                <p>جاري تحميل القوانين...</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="transfer-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 z-50 flex justify-center items-center p-4">
+        <div class="card bg-gray-800 text-white rounded-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto text-right">
+            <div class="flex justify-between items-center border-b border-gray-700 pb-3 mb-4">
+                <h3 class="text-2xl font-bold text-white">تحويل النقاط</h3>
+                <button class="close-transfer-btn text-gray-400 hover:text-white text-3xl font-semibold">
+                &times;
+            </button>
+            </div>
+
+            <p class="text-sm text-red-400 font-semibold mb-4 p-3 bg-red-900/30 rounded-lg">
+                ⚠️ عمولة التحويل هي: **5,000 نقطة** سيتم خصمها من المبلغ الإجمالي.
+            </p>
+
+            <form id="transfer-form" class="space-y-4">
+                <div class="space-y-2">
+                    <label for="recipient-id" class="block text-sm font-medium text-gray-300">معرّف المستخدم (ID) للمستلم:</label>
+                    <div class="flex">
+                        <input type="number" id="recipient-id" required class="flex-grow p-3 border border-gray-600 rounded-r-lg focus:ring-primary focus:border-primary" placeholder="أدخل ID المستلم (مثال: 9876543210)">
+                        <button type="button" id="search-recipient-btn" class="bg-blue-600 text-white font-bold py-3 px-4 rounded-l-lg hover:bg-blue-700 transition duration-300">
+                            بحث
+                    </button>
+                    </div>
+                </div>
+
+                <div id="recipient-details" class="bg-gray-700 p-4 rounded-lg hidden space-y-2 text-sm">
+                    <h4 class="font-bold text-lg border-b border-gray-600 pb-1 text-white">تفاصيل المستلم:</h4>
+                    <p>الاسم: <span id="recipient-name-display" class="font-semibold text-primary"></span></p>
+                    <p>النقاط الحالية: <span id="recipient-points-display" class="font-semibold text-blue-400"></span></p>
+                    <p>كود الإحالة: <span id="recipient-referral-code-display" class="font-semibold text-green-400"></span></p>
+                </div>
+
+                <div class="space-y-2" id="transfer-amount-group" style="display: none;">
+                    <label for="transfer-amount" class="block text-sm font-medium text-gray-300">عدد النقاط للتحويل (الحد الأدنى 1):</label>
+                    <input type="number" id="transfer-amount" required min="1" class="w-full p-3 border border-gray-600 rounded-lg focus:ring-primary focus:border-primary" placeholder="أدخل عدد النقاط">
+                </div>
+
+                <button type="submit" id="final-transfer-btn" class="w-full bg-primary text-white font-bold py-3 px-4 rounded-full shadow-lg hover:bg-secondary disabled:bg-gray-400 transition duration-300" style="display: none;">
+                    تأكيد التحويل
+            </button>
+            </form>
+        </div>
+    </div>
+
+    <div id="store-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 z-50 flex justify-center items-center p-4">
+        <div class="card bg-gray-800 text-white rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl text-right">
+            <div class="flex justify-between items-center border-b border-gray-700 pb-3 mb-4">
+                <h3 class="text-3xl font-extrabold text-purple-400">🛒 المتجر الشامل</h3>
+                <button class="close-store-btn text-gray-400 hover:text-white text-3xl font-semibold">
+                    &times;
+                </button>
+            </div>
+
+            <div class="space-y-6">
+
+                <div class="p-4 bg-blue-900/30 rounded-lg shadow-xl">
+                    <h4 class="text-xl font-bold text-blue-200 border-b border-blue-700 pb-2 mb-3 flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 ml-2 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM13 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2h-2zM13 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2h-2z" />
+                        </svg> خدمات تلغرام
+                    </h4>
+
+                    <div class="mb-4 p-3 bg-blue-900/50 rounded-lg shadow-inner">
+                        <h5 class="font-extrabold text-blue-300 text-xl mb-2 flex items-center">📌 أسعار اشتراكات تلگرام مميز</h5>
+                        <ul class="list-disc list-inside space-y-2 text-gray-200 font-medium mr-4">
+                            <li>✨ اشتراك 3 أشهر 👉 <span class="text-lg font-extrabold text-primary">80,000 نقطة 🪙</span></li>
+                            <li>✨ اشتراك 6 أشهر 👉 <span class="text-lg font-extrabold text-primary">106,000 نقطة 🪙</span></li>
+                            <li>✨ اشتراك سنة كاملة 👉 <span class="text-lg font-extrabold text-primary">187,000 نقطة 🪙</span></li>
+                        </ul>
+                        <p class="text-sm text-red-400 mt-3 font-semibold p-2 bg-red-900/50 rounded-md">
+                            ⚠️ ملاحظة: لازم يكون عندك عداد 100 توب يومياً حتى تكدر تسحب 🪙
+                        </p>
+                        <a href="https://t.me/Topcash132" target="_blank" class="text-base font-bold text-blue-400 hover:text-blue-200 transition duration-300 mt-3 inline-block">🔗 رابط التواصل للطلب</a>
+                    </div>
+
+                    <div class="p-3 bg-blue-900/50 rounded-lg shadow-inner">
+                        <h5 class="font-extrabold text-blue-300 text-xl mb-2 flex items-center">🌟 أسعار النجوم في تلگرام</h5>
+                        <ul class="list-disc list-inside space-y-2 text-gray-200 font-medium mr-4">
+                            <li>⭐ 100 نجمة 👉 <span class="text-lg font-extrabold text-primary">13,000 نقطة 🪙</span></li>
+                            <li>⭐⭐ 500 نجمة 👉 <span class="text-lg font-extrabold text-primary">64,000 نقطة 🪙</span></li>
+                            <li>⭐⭐⭐ 1000 نجمة 👉 <span class="text-lg font-extrabold text-primary">127,000 نقطة 🪙</span></li>
+                        </ul>
+                        <p class="text-sm text-red-400 mt-3 font-semibold p-2 bg-red-900/50 rounded-md">
+                            ⚠️ ملاحظة: لازم يكون عندك عداد 100 توب يومياً حتى تكدر تسحب 🪙
+                        </p>
+                        <a href="https://t.me/Topcash132" target="_blank" class="text-base font-bold text-blue-400 hover:text-blue-200 transition duration-300 mt-3 inline-block">🔗 رابط التواصل للطلب</a>
+                    </div>
+                </div>
+
+                <div class="p-4 bg-yellow-900/30 rounded-lg shadow-xl">
+                    <h4 class="text-xl font-bold text-yellow-200 border-b border-yellow-700 pb-2 mb-3 flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 ml-2 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M10 1a9 9 0 019 9c0 4.97-4.03 9-9 9s-9-4.03-9-9a9 9 0 019-9zm0 16.5A7.5 7.5 0 0017.5 10c0-2.86-1.57-5.36-4-6.72V17zM5.5 10a4.5 4.5 0 109 0 4.5 4.5 0 00-9 0z" clip-rule="evenodd" />
+                        </svg> شدات ببجي
+                    </h4>
+
+                    <ul class="list-none space-y-2 text-gray-200 font-medium p-3 bg-yellow-900/50 rounded-lg shadow-inner">
+                        <li class="p-1.5 border-b border-yellow-800">120 شدة 👉 <span class="font-extrabold text-primary">17,000 توب 🪙</span></li>
+                        <li class="p-1.5 border-b border-yellow-800">180 شدة 👉 <span class="font-extrabold text-primary">25,000 توب 🪙</span></li>
+                        <li class="p-1.5 border-b border-yellow-800">336 شدة 👉 <span class="font-extrabold text-primary">40,000 توب 🪙</span></li>
+                        <li class="p-1.5 border-b border-yellow-800">688 شدة 👉 <span class="font-extrabold text-primary">62,000 توب 🪙</span></li>
+                        <li class="p-1.5">1170 شدة 👉 <span class="font-extrabold text-primary">110,000 توب 🪙</span></li>
+                    </ul>
+                    <p class="text-sm text-red-400 mt-3 font-semibold p-2 bg-red-900/50 rounded-md">
+                        ⚠️ ملاحظة: لازم يكون عندك عداد 100 توب يومياً حتى تكدر تسحب 🪙
+                    </p>
+                    <a href="https://t.me/AGD7S" target="_blank" class="text-base font-bold text-yellow-400 hover:text-yellow-200 transition duration-300 mt-3 inline-block">🔗 رابط التواصل للطلب</a>
+                </div>
+
+                <div class="p-4 bg-gray-700 rounded-lg shadow-xl">
+                    <h4 class="text-xl font-bold text-white border-b border-gray-600 pb-2 mb-3 flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 ml-2 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.293a1 1 0 011.414 0L10 8.586l2.293-2.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414zM9 16h2V4H9v12z" clip-rule="evenodd" />
+                        </svg> متاجر وروابط مفيدة أخرى
+                    </h4>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <a href="https://t.me/S_OOOCI" target="_blank" class="p-4 bg-gray-800 rounded-lg shadow-md hover:bg-gray-700 transition duration-300 flex flex-col items-center justify-center border border-indigo-700">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-indigo-400 mb-1" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M9 4.848V2.5A2.5 2.5 0 0112.5 0h.5A2.5 2.5 0 0115.5 2.5v.5A2.5 2.5 0 0112.5 5h-.5A2.5 2.5 0 019 2.5V2h1V1h-2v1H7V1H5v1H3v1h1v14a1 1 0 001 1h10a1 1 0 001-1V5h-2v.848a2.5 2.5 0 01-3 0V5h-.5A2.5 2.5 0 019 7.5v11.5a1 1 0 01-1 1H4a1 1 0 01-1-1V5a1 1 0 011-1h5zM14 7.5a1.5 1.5 0 10-3 0 1.5 1.5 0 003 0z" />
+                            </svg>
+                            <span class="font-bold text-lg text-indigo-300">📚 مكتبة لسراج</span>
+                            <span class="text-xs text-gray-400">قناة تلغرام خارجية</span>
+                        </a>
+                        <a href="https://t.me/u_tto" target="_blank" class="p-4 bg-gray-800 rounded-lg shadow-md hover:bg-gray-700 transition duration-300 flex flex-col items-center justify-center border border-green-700">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-green-400 mb-1" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.707-10.293a1 1 0 00-1.414-1.414L7 9.586 5.707 8.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                            </svg>
+                            <span class="font-bold text-lg text-green-300">👑 متجر القمة</span>
+                            <span class="text-xs text-gray-400">قناة تلغرام خارجية</span>
+                        </a>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="script.js"></script>
+    <script>
+        // دالة لنسخ كود الإحالة (تتطلب استخدام document.execCommand لأفضل توافق في هذا البيئة)
+        document.getElementById('copy-referral-btn').addEventListener('click', function() {
+            const referralCodeElement = document.getElementById('referral-code');
+            const code = referralCodeElement.textContent;
+
+            // استخدام حقل إدخال مؤقت للنسخ
+            const tempInput = document.createElement('input');
+            tempInput.value = code;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+
+            try {
+                const successful = document.execCommand('copy');
+                const msg = successful ? 'تم النسخ بنجاح!' : 'فشل النسخ.';
+
+                // عرض رسالة النجاح (يمكنك تحسين هذا لاستخدام نافذة الرسائل المنبثقة #message)
+                alert(msg); // تم استخدام alert هنا مؤقتاً للتوضيح، لكن يفضل استخدام وظيفة showMessage من script.js
+            } catch (err) {
+                alert('فشل في النسخ: ' + err);
+            }
+
+            document.body.removeChild(tempInput);
+        });
+
+        // منطق عرض/إخفاء Modal القوانين
+        const termsModal = document.getElementById('terms-modal');
+        const termsBtn = document.getElementById('terms-btn');
+        const closeBtn = termsModal.querySelector('.close-btn');
+
+        termsBtn.addEventListener('click', () => {
+            termsModal.classList.remove('hidden');
+            termsModal.classList.add('flex');
+        });
+
+        closeBtn.addEventListener('click', () => {
+            termsModal.classList.add('hidden');
+            termsModal.classList.remove('flex');
+        });
+
+        // إغلاق عند الضغط خارج المودال
+        termsModal.addEventListener('click', (e) => {
+            if (e.target === termsModal) {
+                termsModal.classList.add('hidden');
+                termsModal.classList.remove('flex');
+            }
+        });
+
+        // منطق عرض/إخفاء Modal المتجر الجديد (مضاف)
+        const storeModal = document.getElementById('store-modal');
+        const openStoreBtn = document.getElementById('open-store-modal-btn');
+        const closeStoreBtn = storeModal.querySelector('.close-store-btn');
+
+        if (openStoreBtn && storeModal && closeStoreBtn) {
+            openStoreBtn.addEventListener('click', () => {
+                storeModal.classList.remove('hidden');
+                storeModal.classList.add('flex');
+            });
+
+            closeStoreBtn.addEventListener('click', () => {
+                storeModal.classList.add('hidden');
+                storeModal.classList.remove('flex');
+            });
+
+            // إغلاق عند الضغط خارج المودال
+            storeModal.addEventListener('click', (e) => {
+                if (e.target === storeModal) {
+                    storeModal.classList.add('hidden');
+                    storeModal.classList.remove('flex');
+                }
+            });
+        }
+    </script>
+</body>
+
+
+</html>
+
+

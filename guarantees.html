@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>شروط وأحكام الضمان</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'Ariel', 'sans-serif'],
+                    },
+                    colors: {
+                        'primary': '#059669', // Emerald 600
+                        'secondary': '#10b981', // Emerald 500
+                        'accent': '#34d399', // Emerald 400
+                        'dark-bg': '#1f2937', // Gray 800 (خلفية البطاقات والقوائم)
+                        'app-bg': '#111827', // Gray 900 (خلفية الصفحة)
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #111827;
+            /* app-bg */
+            color: #d1d5db;
+            /* نص رمادي فاتح */
+        }
+        
+        .guarantee-container {
+            /* استبدال background-color: #ffffff; */
+            background-color: #1f2937;
+            /* dark-bg */
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+        }
+        
+        h1 {
+            /* استبدال color: #007bff; */
+            color: #059669;
+            /* primary */
+            /* استبدال border-bottom: 3px solid #007bff; */
+            border-bottom: 3px solid #059669;
+        }
+        
+        .guarantee-card {
+            /* استبدال background-color: #f8f9fa; */
+            background-color: #111827;
+            /* app-bg darker */
+            border: 1px solid #374151;
+            /* Gray 700 */
+        }
+        
+        .guarantee-card:hover {
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            /* تظليل أخف في الداكن */
+        }
+        
+        .rule-header {
+            /* استبدال color: #343a40; */
+            color: #f3f4f6;
+            /* نص أبيض/فاتح */
+        }
+        
+        .rule-content {
+            /* استبدال color: #555; */
+            color: #9ca3af;
+            /* Gray 400 */
+        }
+        /* تنسيق قسم الفائدة الخاصة (لجذب الانتباه) */
+        
+        #benefit-section {
+            /* أصفر داكن - يتناسب مع الأصفر المعتاد */
+            background-color: #453b1b;
+            /* Dark Yellow/Brown */
+            border-right: 5px solid #fbbf24;
+            /* Amber 400 */
+        }
+        
+        #benefit-section h2 {
+            /* استبدال color: #ffc107; */
+            color: #fcd34d;
+            /* Amber 300 */
+        }
+        /* تنسيق ملاحظة أسفل الصفحة */
+        
+        .note {
+            /* أحمر داكن - يتناسب مع الأحمر المعتاد */
+            color: #f87171;
+            /* Red 400 */
+            border: 1px dashed #ef4444;
+            /* Red 500 */
+            background-color: #451b1b;
+            /* Dark Red/Brown */
+        }
+    </style>
+</head>
+
+<body>
+    <div class="guarantee-container max-w-4xl w-full mx-auto p-4 sm:p-6 lg:p-8 rounded-xl">
+        <a href="dashboard.html" class="back-btn bg-gray-600 text-white py-2 px-4 rounded-lg text-sm hover:bg-gray-700 transition duration-200 font-semibold mb-6">
+            <i class="fa-solid fa-arrow-right-to-bracket transform rotate-180 ml-2"></i> رجوع
+        </a>
+
+        <h1 class="text-primary text-center pb-4 mb-8">
+            <i class="fa-solid fa-file-contract ml-2"></i> شروط وأحكام عقد الاستثمار المضمون – مختصر
+        </h1>
+
+        <div class="guarantee-card px-5 py-4 mb-4">
+            <div class="rule-header">
+                <span class="text-primary mr-3"><i class="fa-solid fa-calendar-alt"></i></span> مدة العقد
+            </div>
+            <div class="rule-content text-gray-400">الاستثمار لمدة **سنة واحدة فقط**.</div>
+        </div>
+
+        <div class="guarantee-card px-5 py-4 mb-4">
+            <div class="rule-header">
+                <span class="text-primary mr-3"><i class="fa-solid fa-shield-alt"></i></span> الضمان
+            </div>
+            <div class="rule-content text-gray-400">الإدارة تلتزم بضمان **قانوني وإلكتروني** لمدة سنة عبر المالك مباشرة.</div>
+        </div>
+
+        <div class="guarantee-card px-5 py-4 mb-4">
+            <div class="rule-header">
+                <span class="text-primary mr-3"><i class="fa-solid fa-exchange-alt"></i></span> التحويلات المالية
+            </div>
+            <div class="rule-content text-gray-400">لا تتجاوز قيمة التحويلات **10,000 نقطة** خلال فترة العقد، ويجوز زيادتها فقط بموافقة **خطية مسبقة** من إدارة البوت.</div>
+        </div>
+
+        <div class="guarantee-card px-5 py-4 mb-4">
+            <div class="rule-header">
+                <span class="text-primary mr-3"><i class="fa-solid fa-user-clock"></i></span> نشاط الحساب
+            </div>
+            <div class="rule-content text-gray-400">يجب أن يكون الحساب **نشط** خلال آخر **45 يوم** من توقيع العقد.</div>
+        </div>
+
+        <div class="guarantee-card px-5 py-4 mb-4">
+            <div class="rule-header">
+                <span class="text-primary mr-3"><i class="fa-solid fa-sack-dollar"></i></span> الأرباح
+            </div>
+            <div class="rule-content text-gray-400">تصرف شهريًا بالدينار أو الدولار أو **تحفظ بالبوت**.</div>
+        </div>
+
+        <div class="guarantee-card px-5 py-4 mb-4">
+            <div class="rule-header">
+                <span class="text-primary mr-3"><i class="fa-solid fa-triangle-exclamation"></i></span> الالتزامات
+            </div>
+            <div class="rule-content text-gray-400">المستثمر لا يطالب بأرباح إضافية خارج العقد، والإدارة غير مسؤولة عن خسائر بسبب مخالفته.</div>
+        </div>
+
+        <div class="guarantee-card px-5 py-4 mb-4">
+            <div class="rule-header">
+                <span class="text-primary mr-3"><i class="fa-solid fa-chart-line"></i></span> المخاطر
+            </div>
+            <div class="rule-content text-gray-400">الأرباح **غير ثابتة** وتعتمد على نشاط الحساب، مع ضمان **أصل رأس المال فقط**.</div>
+        </div>
+
+        <div class="guarantee-card px-5 py-4 mb-4">
+            <div class="rule-header">
+                <span class="text-primary mr-3"><i class="fa-solid fa-handshake-slash"></i></span> فسخ العقد
+            </div>
+            <div class="rule-content text-gray-400">يمكن لأي طرف فسخ العقد بشرط **إشعار مسبق** قبل **30 يوم**.</div>
+        </div>
+
+        <div class="guarantee-card px-5 py-4 mb-4">
+            <div class="rule-header">
+                <span class="text-primary mr-3"><i class="fa-solid fa-scale-balanced"></i></span> القوانين
+            </div>
+            <div class="rule-content text-gray-400">العقد يخضع للقوانين المحلية النافذة.</div>
+        </div>
+
+        <div id="benefit-section" class="guarantee-card px-5 py-4 mt-8">
+            <div class="rule-header text-amber-300">
+                <span class="mr-3"><i class="fa-solid fa-certificate"></i></span> فائدة الضمان:
+            </div>
+            <div class="rule-content text-amber-200" style="padding-right: 0;">
+                في حال حدوث ظروف طارئة <i class="fa-solid fa-triangle-exclamation text-red-500"></i> أو توقف المشروع لأي سبب (مثل مشاكل السيولة <i class="fa-solid fa-droplet text-blue-400"></i>، إيقاف النشاط من قبل الجهات الرسمية <i class="fa-solid fa-landmark text-gray-400"></i>،
+                أو أي عارض خارج عن إرادة الإدارة)، فإن الاستثمار بالضمان يضمن للمستثمر <i class="fa-solid fa-circle-check text-green-500"></i> حقه الاستثماري السنوي وفق الشروط والأحكام المذكورة أعلاه، دون أن يمتد إلى التزامات إضافية خارج إطار العقد.
+            </div>
+        </div>
+
+        <div class="note py-4 px-5 rounded-lg">
+            <i class="fa-solid fa-circle-info ml-2"></i> ملاحظة: هذا العداد يختلف عن العداد العادي. عند شرائك لأول مرة يجب إبلاغ الوكيل بأنك تريد استثمار بالضمان، ليتم تفعيل العداد وتسجيلك في الضمان.
+        </div>
+
+
+    </div>
+</body>
+
+</html>

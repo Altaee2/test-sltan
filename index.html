@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>توبكاش</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    
+    <link rel="icon" type="image/jpeg" href="top.jpg">
+
+    <meta property="og:title" content="متجر توب كاش الاستثماري">
+    <meta property="og:description" content="اهلا بك في عالم الاستثمار الذكي مع توبكاش , استرجع رأس المال خلال 5 أشهر فقط , مدة الاستثمار سنتين , اغتنم الفرصة وكن جزءاً من نجاحنا ">
+    <meta property="og:image" content="top.jpg">
+    <meta property="og:url" content="www.top-cash.wuaze.com">
+    <meta property="og:type" content="website">
+
+  
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0d1117;
+            /* خلفية داكنة ثابتة (GitHub Dark) */
+            color: #c9d1d9;
+            /* نص فاتح */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 450px;
+            background-color: #161b22;
+            /* خلفية البطاقة */
+            padding: 2.5rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            border: 1px solid #30363d;
+        }
+        
+        input[type="email"],
+        input[type="password"],
+        input[type="text"] {
+            background-color: #0d1117;
+            border: 1px solid #30363d;
+            color: #c9d1d9;
+            padding: 0.75rem 1rem;
+            border-radius: 6px;
+            width: 100%;
+            transition: border-color 0.3s;
+        }
+        
+        input:focus {
+            border-color: #58a6ff;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.2);
+        }
+        
+        button {
+            transition: background-color 0.3s, transform 0.1s;
+        }
+        
+        button:hover:not(:disabled) {
+            transform: translateY(-1px);
+        }
+        
+        #message {
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+            margin-bottom: 1rem;
+            display: none;
+            font-weight: 600;
+        }
+        
+        .tab-btn.active {
+            border-bottom: 3px solid #58a6ff;
+            color: #58a6ff;
+        }
+        /* Modal Styles */
+        
+        #terms-modal {
+            background-color: rgba(0, 0, 0, 0.75);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 50;
+        }
+        
+        .rule-item {
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+            border-radius: 6px;
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            border-right: 4px solid;
+        }
+        
+        .rule-item-bad {
+            background-color: #2c1a1a;
+            border-color: #ff7b72;
+        }
+        
+        .rule-item-good {
+            background-color: #1a2c1a;
+            border-color: #3fb950;
+        }
+        
+        .rule-icon {
+            font-size: 1.25rem;
+            flex-shrink: 0;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div id="message" role="alert"></div>
+
+        <div class="flex flex-col items-center mb-6">
+            <img src="top.jpg" alt="شعار توب كاش" class="h-16 w-16 mb-3 rounded-full border border-gray-700">
+            <h1 class="text-3xl font-bold text-center text-white">توب كاش</h1>
+        </div>
+
+        <div class="flex border-b border-gray-700 mb-6">
+            <button id="login-tab" class="tab-btn w-1/2 py-3 text-lg font-semibold text-gray-400 active" onclick="showTab('login')">
+                <i class="fas fa-sign-in-alt ml-2"></i> تسجيل الدخول
+            </button>
+            <button id="register-tab" class="tab-btn w-1/2 py-3 text-lg font-semibold text-gray-400" onclick="showTab('register')">
+                <i class="fas fa-user-plus ml-2"></i> إنشاء حساب
+            </button>
+        </div>
+
+        <form id="loginForm" class="space-y-4" style="display: block;">
+            <div>
+                <label for="login-email" class="block text-sm font-medium mb-1 text-gray-300">
+                    <i class="fas fa-envelope text-blue-400"></i> البريد الإلكتروني
+                </label>
+                <input type="email" id="login-email" required placeholder="example@domain.com">
+            </div>
+            <div>
+                <label for="password" class="block text-sm font-medium mb-1 text-gray-300">
+                    <i class="fas fa-lock text-blue-400"></i> كلمة السر
+                </label>
+                <input type="password" id="password" required placeholder="••••••••">
+            </div>
+            <button type="submit" class="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 mt-4 flex items-center justify-center">
+                <i class="fas fa-sign-in-alt mr-2"></i> تسجيل الدخول
+            </button>
+        </form>
+
+        <form id="registerForm" class="space-y-4" style="display: none;">
+            <div>
+                <label for="reg-email" class="block text-sm font-medium mb-1 text-gray-300">
+                    <i class="fas fa-envelope text-green-400"></i> البريد الإلكتروني
+                </label>
+                <input type="email" id="reg-email" required placeholder="example@domain.com">
+            </div>
+            <div>
+                <label for="reg-username" class="block text-sm font-medium mb-1 text-gray-300">
+                    <i class="fas fa-user text-green-400"></i> اسم المستخدم
+                </label>
+                <input type="text" id="reg-username" required placeholder="اسم مستعار">
+            </div>
+            <div>
+                <label for="reg-password" class="block text-sm font-medium mb-1 text-gray-300">
+                    <i class="fas fa-lock text-green-400"></i> كلمة السر
+                </label>
+                <input type="password" id="reg-password" required placeholder="كلمة السر (6 أحرف على الأقل)">
+            </div>
+            <div>
+                <label for="reg-confirm-password" class="block text-sm font-medium mb-1 text-gray-300">
+                    <i class="fas fa-check-double text-green-400"></i> تأكيد كلمة السر
+                </label>
+                <input type="password" id="reg-confirm-password" required placeholder="أعد إدخال كلمة السر">
+            </div>
+            <div>
+                <label for="referral-code" class="block text-sm font-medium mb-1 text-gray-300">
+                    <i class="fas fa-gift text-green-400"></i> كود الإحالة (اختياري)
+                </label>
+                <input type="text" id="referral-code" placeholder="أدخل كود الإحالة">
+                <p class="text-xs text-gray-500 mt-1">إذا لديك كود، أدخله للحصول على مكافآت عند التسجيل.</p>
+            </div>
+
+            <button type="submit" class="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 mt-4 flex items-center justify-center">
+                <i class="fas fa-user-plus mr-2"></i> إنشاء حساب جديد
+            </button>
+        </form>
+
+        <div class="mt-6 pt-4 border-t border-gray-700 text-center text-sm space-y-2">
+
+            <button id="terms-btn" class="text-gray-400 hover:text-gray-300 block w-full text-center flex items-center justify-center">
+                <i class="fas fa-scroll ml-2"></i> الأحكام والقوانين
+            </button>
+        </div>
+    </div>
+
+    <div id="terms-modal" class="fixed inset-0 bg-black bg-opacity-75 hidden z-50">
+        <div class="relative bg-[#161b22] max-w-lg mx-auto my-10 p-6 rounded-lg shadow-xl border border-[#30363d]">
+            <span class="close-btn absolute top-3 left-3 text-2xl text-gray-400 cursor-pointer hover:text-white">&times;</span>
+            <h2 class="text-2xl font-bold text-white border-b border-gray-700 pb-3 mb-4 flex items-center">
+                <i class="fas fa-gavel ml-2 text-red-500"></i> قوانين وأحكام توب كاش
+            </h2>
+            <div id="terms-text" class="text-gray-300 space-y-4 overflow-y-auto max-h-96">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // دالة تبديل التبويبات بين الدخول والتسجيل
+        function showTab(tabName) {
+            document.getElementById('loginForm').style.display = tabName === 'login' ? 'block' : 'none';
+            document.getElementById('registerForm').style.display = tabName === 'register' ? 'block' : 'none';
+
+            document.getElementById('login-tab').classList.remove('active');
+            document.getElementById('register-tab').classList.remove('active');
+
+            document.getElementById(`${tabName}-tab`).classList.add('active');
+        }
+
+        // تفعيل الإيقونات والنصوص في الـ Modal (يمكنك تكييفها مع محتوى القوانين الحقيقي)
+        document.addEventListener('DOMContentLoaded', () => {
+            const termsText = document.getElementById('terms-text');
+            const sampleRules = [{
+                type: 'good',
+                text: 'يجب أن تكون جميع بيانات التسجيل صحيحة وحديثة.',
+                icon: 'fas fa-check-circle'
+            }, {
+                type: 'bad',
+                text: 'يمنع استخدام الحسابات الوهمية أو المكررة.',
+                icon: 'fas fa-times-circle'
+            }, {
+                type: 'good',
+                text: 'يجب احترام جميع المستخدمين والوكلاء وعدم الإساءة لهم.',
+                icon: 'fas fa-handshake'
+            }, {
+                type: 'bad',
+                text: 'يمنع استخدام أي برامج أو أدوات خارجية للتلاعب بالنقاط أو العدادات.',
+                icon: 'fas fa-bug'
+            }, ];
+
+            // عرض القوانين في الـ Modal
+            termsText.innerHTML = sampleRules.map(rule => `
+                <div class="rule-item rule-item-${rule.type}">
+                    <i class="${rule.icon} rule-icon ${rule.type === 'good' ? 'text-green-400' : 'text-red-400'}"></i>
+                    <p>${rule.text}</p>
+                </div>
+            `).join('');
+
+            // منطق عرض/إخفاء Modal القوانين
+            const termsModal = document.getElementById('terms-modal');
+            const termsBtn = document.getElementById('terms-btn');
+            const closeBtn = termsModal.querySelector('.close-btn');
+
+            termsBtn.addEventListener('click', () => {
+                termsModal.classList.remove('hidden');
+                termsModal.classList.add('flex');
+            });
+
+            closeBtn.addEventListener('click', () => {
+                termsModal.classList.add('hidden');
+                termsModal.classList.remove('flex');
+            });
+
+            termsModal.addEventListener('click', (e) => {
+                if (e.target === termsModal) {
+                    termsModal.classList.add('hidden');
+                    termsModal.classList.remove('flex');
+                }
+            });
+        });
+    </script>
+    <script type="module" src="script.js"></script>
+</body>
+
+
+</html>
+
+
+
