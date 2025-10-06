@@ -69,7 +69,7 @@
     <div class="max-w-4xl mx-auto">
         <header class="flex justify-between items-center mb-6 pb-4 border-b border-gray-300">
             <h1 class="text-3xl font-bold text-gray-800 flex items-center">
-                <i class="fas fa-screwdriver-wrench text-primary ml-2"></i> لوحة تحكم المطور
+                <i class="fas fa-screwdriver-wrench text-green-500 ml-2"></i> لوحة تحكم المطور
             </h1>
             <button id="logout-btn" class="btn-danger py-2 px-4 rounded-lg font-semibold">
                 <i class="fas fa-sign-out-alt ml-2"></i>
@@ -78,33 +78,42 @@
         </header>
 
         <!-- رسالة النظام -->
-        <div id="message" class="hidden text-right" role="alert"></div>
-        <div id="admin-message" class="text-center font-medium bg-blue-100 text-blue-800"></div>
+        <div id="message-container" class="fixed top-4 left-4 z-50 space-y-2">
+            <!-- Messages will appear here -->
+        </div>
 
         <!-- بطاقة البحث عن المستخدم -->
         <div class="card p-6 mb-6">
             <h2 class="text-xl font-semibold mb-4 text-gray-700">1. البحث عن المستخدم</h2>
+            <!-- تم إضافة ID لنموذج البحث -->
             <form id="search-form" class="flex flex-col sm:flex-row gap-4">
-                <input type="number" id="search-id" placeholder="أدخل الـ ID الرقمي للمستخدم (10 أرقام)" required class="flex-grow">
+                <input type="text" id="search-id" placeholder="أدخل UID المستخدم أو البريد الإلكتروني" required class="flex-grow text-left">
                 <button type="submit" class="btn-primary py-2 px-6 rounded-lg font-semibold">
                     <i class="fas fa-search ml-2"></i>
                     بحث
                 </button>
             </form>
         </div>
+        
+        <!-- حقل مخفي لتخزين الـ UID المستهدف -->
+        <input type="hidden" id="target-uid" value="">
 
         <!-- بطاقة بيانات المستخدم المستهدف -->
-        <div class="card p-6 mb-6" id="user-data-display-card">
+        <div class="card p-6 mb-6">
             <h2 class="text-xl font-semibold mb-4 text-gray-700">2. بيانات المستخدم المستهدف</h2>
             <div id="user-data-display" class="space-y-2 text-gray-600">
-                <p>قم بالبحث عن مستخدم باستخدام الـ ID الرقمي أعلاه.</p>
+                <p class="text-center italic text-gray-400">قم بالبحث عن مستخدم باستخدام الـ UID أو البريد الإلكتروني أعلاه.</p>
+                <!-- البيانات ستظهر هنا بواسطة JS -->
             </div>
+            <!-- رسالة تحذير/تنبيه إذا كان محظوراً أو مطوراً -->
+            <div id="status-alert" class="mt-4 hidden p-3 rounded-lg text-center font-bold"></div>
         </div>
 
         <!-- بطاقة الإجراءات الإدارية -->
-        <div class="card p-6" id="adminPanel">
+        <!-- الإجراءات الإدارية ستظهر فقط عند العثور على مستخدم -->
+        <div class="card p-6" id="adminPanelActions" style="display: none;">
             <h2 class="text-xl font-semibold mb-4 text-gray-700">3. تنفيذ الإجراءات</h2>
-            <form id="action-form" class="space-y-4" style="display: none;">
+            <form id="action-form" class="space-y-4">
 
                 <!-- اختيار نوع الإجراء -->
                 <div>
@@ -119,9 +128,9 @@
                             <option value="addCounter">إضافة للعداد (+)</option>
                             <option value="subtractCounter">خصم من العداد (-)</option>
                         </optgroup>
-                        <optgroup label="تجميد الحساب">
+                        <optgroup label="حالة الحساب">
                             <option value="banAccount">تجميد (حظر)</option>
-                            <option value="unbanAccount">إلغاء التجميد (رفع الحظر)</option>
+                            <option value="unbanAccount">إلغاء التجميد</option>
                         </optgroup>
                         <optgroup label="معلومات الحساب">
                             <option value="updateEmail">تعديل البريد الإلكتروني</option>
@@ -131,8 +140,9 @@
 
                 <!-- حقل القيمة (يظهر حسب الإجراء) -->
                 <div id="action-value-group">
-                    <label for="action-value" class="block mb-2 font-medium text-gray-700">القيمة/المعلومة:</label>
-                    <input type="text" id="action-value" placeholder="القيمة المطلوبة" class="w-full">
+                    <label for="action-value" class="block mb-2 font-medium text-gray-700"><span id="value-label">القيمة/المعلومة</span>:</label>
+                    <!-- تم تعديل النوع إلى text ليناسب النقاط والبريد الإلكتروني -->
+                    <input type="text" id="action-value" placeholder="القيمة المطلوبة (رقم النقاط أو البريد الإلكتروني الجديد)" class="w-full text-left">
                 </div>
 
                 <button type="submit" class="btn-primary py-3 px-6 rounded-lg font-bold w-full">
